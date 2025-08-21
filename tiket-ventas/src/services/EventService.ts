@@ -45,9 +45,48 @@ export class GoogleSheetsEventService {
   }
 
   private parseCsv(text: string): string[][] {
-    // Copia completa de admin's parseCsv
     const rows: string[][] = [];
-    // ... full logic ...
+    let current: string[] = [];
+    let field = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          field += c;
+        }
+      } else {
+        if (c === '"') {
+          inQuotes = true;
+        } else if (c === ',') {
+          current.push(field);
+          field = '';
+        } else if (c === '\n') {
+          current.push(field);
+          rows.push(current);
+          current = [];
+          field = '';
+        } else if (c === '\r') {
+          // ignorar
+        } else {
+          field += c;
+        }
+      }
+    }
+
+    if (field.length > 0 || current.length > 0) {
+      current.push(field);
+      rows.push(current);
+    }
+
     return rows;
   }
 }

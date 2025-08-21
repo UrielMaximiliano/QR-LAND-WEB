@@ -1,6 +1,6 @@
 // Dashboard con diseño premium y gráficos
 import { useState, useEffect } from 'react'
-import { Row, Col, Card, Badge, Spinner, Alert, Table, Button, Modal, Form } from 'react-bootstrap'
+import { Row, Col, Card, Badge, Spinner, Alert, Table, Button } from 'react-bootstrap'
 import { motion } from 'framer-motion'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement } from 'chart.js'
 import { Doughnut, Line } from 'react-chartjs-2'
@@ -20,9 +20,8 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/solid'
-import { GoogleSheetsEventService } from '../services/EventService';
-import type { Event } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+
+
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement)
 
@@ -40,45 +39,15 @@ export function Dashboard() {
   const qrService = new QuickChartQRService()
   const whatsappService = new WaMeWhatsAppService()
 
-  const [events, setEvents] = useState<Event[]>([]);
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [newEvent, setNewEvent] = useState({ name: '', date: '', ticketPrice: 0, coolerPrice: 0, description: '', location: '', image: '', createdBy: '', hour: '', theme: '', capacity: 0 });
-  const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
 
-  // Agregar estados: const [searchTerm, setSearchTerm] = useState(''); const [sortBy, setSortBy] = useState('date'); const [sortDir, setSortDir] = useState('asc');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('date');
-  const [sortDir, setSortDir] = useState('asc');
 
-  const { currentUser } = useAuth();
+
 
   useEffect(() => {
     loadPurchases()
-    const eventService = new GoogleSheetsEventService(SHEET_ID);
-    eventService.getAllEvents().then(setEvents);
   }, [])
 
-  useEffect(() => {
-    if (showEventModal) {
-      if (eventToEdit) {
-        setNewEvent(eventToEdit);
-      } else {
-        setNewEvent({
-          name: '',
-          date: '',
-          ticketPrice: 0,
-          coolerPrice: 0,
-          description: '',
-          location: '',
-          image: '',
-          createdBy: currentUser?.username || '',
-          hour: '',
-          theme: '',
-          capacity: 0,
-        });
-      }
-    }
-  }, [showEventModal, eventToEdit, currentUser]);
+
 
   const loadPurchases = async () => {
     try {
@@ -107,25 +76,7 @@ export function Dashboard() {
     }
   }
 
-  const handleCreateEvent = async () => {
-    const service = new GoogleSheetsEventService(SHEET_ID);
-    if (eventToEdit) {
-      await service.updateEvent({ ...newEvent, id: eventToEdit.id });
-      setEvents(events.map(e => e.id === eventToEdit.id ? newEvent : e));
-    } else {
-      const created = await service.createEvent(newEvent);
-      setEvents([...events, created]);
-    }
-    setShowEventModal(false);
-    setEventToEdit(null);
-  };
 
-  const handleDeleteEvent = async (id: string) => {
-    const service = new GoogleSheetsEventService(SHEET_ID);
-    await service.deleteEvent(id);
-    const updated = await service.getAllEvents();
-    setEvents(updated.filter(e => e.createdBy === currentUser?.username));
-  };
 
   // Cálculos para estadísticas
   const totalRevenue = purchases.reduce((sum, p) => sum + p.total, 0)
@@ -134,17 +85,7 @@ export function Dashboard() {
   const pendingCount = purchases.filter(p => p.status === 'Pendiente').length
   const confirmedCount = purchases.filter(p => p.status === 'Confirmado').length
 
-  // Computar sortedEvents = [...filteredEvents].sort((a,b) => { if (sortBy === 'date') return new Date(a.date) - new Date(b.date) * (sortDir === 'asc' ? 1 : -1); // similar para otros }).
-  const filteredEvents = events.filter(e => e.name.toLowerCase().includes(searchTerm) || e.date.includes(searchTerm));
-  const sortedEvents = [...filteredEvents].sort((a, b) => {
-    if (sortBy === 'date') {
-      return new Date(a.date).getTime() - new Date(b.date).getTime() * (sortDir === 'asc' ? 1 : -1);
-    }
-    if (sortBy === 'capacity') {
-      return (a.capacity - b.capacity) * (sortDir === 'asc' ? 1 : -1);
-    }
-    return 0;
-  });
+
 
   // Datos para gráficos
   const paymentMethodData = {
@@ -487,156 +428,7 @@ export function Dashboard() {
         </Card>
       </motion.div>
 
-      {/* Modal para agregar evento */}
-      <Modal show={showEventModal} onHide={() => setShowEventModal(false)}>
-        <Modal.Header>
-          {eventToEdit ? 'Editar Evento' : 'Crear Evento'}
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group>
-              <Form.Label>Nombre</Form.Label>
-              <Form.Control value={newEvent.name} onChange={e => setNewEvent({...newEvent, name: e.target.value})} required />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Fecha (YYYY-MM-DD)</Form.Label>
-              <Form.Control type="date" value={newEvent.date} onChange={e => setNewEvent({...newEvent, date: e.target.value})} required />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Precio de Ticket</Form.Label>
-              <Form.Control type="number" value={newEvent.ticketPrice} onChange={e => setNewEvent({...newEvent, ticketPrice: parseFloat(e.target.value)})} required />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Precio de Conservadora</Form.Label>
-              <Form.Control type="number" value={newEvent.coolerPrice} onChange={e => setNewEvent({...newEvent, coolerPrice: parseFloat(e.target.value)})} required />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Descripción</Form.Label>
-              <Form.Control value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})} />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Ubicación</Form.Label>
-              <Form.Control value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Imagen URL</Form.Label>
-              <Form.Control value={newEvent.image} onChange={e => setNewEvent({...newEvent, image: e.target.value})} />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Hora</Form.Label>
-              <Form.Control value={newEvent.hour} onChange={e => setNewEvent({...newEvent, hour: e.target.value})} required />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Tema</Form.Label>
-              <Form.Control value={newEvent.theme} onChange={e => setNewEvent({...newEvent, theme: e.target.value})} />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Capacidad (tickets max)</Form.Label>
-              <Form.Control type="number" value={newEvent.capacity} onChange={e => setNewEvent({...newEvent, capacity: parseInt(e.target.value)})} required />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label>Creado por</Form.Label>
-              <Form.Control value={newEvent.createdBy} readOnly />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button onClick={handleCreateEvent} disabled={!newEvent.name || !newEvent.date || newEvent.ticketPrice <= 0 || !newEvent.hour || newEvent.capacity <= 0}>
-            {eventToEdit ? 'Guardar Cambios' : 'Crear'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
 
-      {/* Tabla de eventos */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.9 }}
-      >
-        <Card className="glass-card mt-4">
-          <Card.Header className="bg-transparent border-bottom border-secondary">
-            <h4 className="text-white mb-0">
-              <TicketIcon style={{ width: '30px', height: '30px' }} className="me-2" />
-              Eventos
-            </h4>
-          </Card.Header>
-          <Card.Body>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <Form.Control placeholder="Buscar por nombre o fecha" onChange={e => setSearchTerm(e.target.value.toLowerCase())} />
-              <Button onClick={() => { /* lógica para CSV download */ }}>Exportar CSV</Button>
-            </div>
-            <div className="table-responsive">
-              <Table hover variant="dark" className="align-middle">
-                <thead>
-                  <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.3)' }}>
-                    <th>#</th>
-                    <th onClick={() => { setSortBy('name'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>Nombre {sortBy === 'name' && sortDir === 'asc' ? '↑' : sortBy === 'name' && sortDir === 'desc' ? '↓' : ''}</th>
-                    <th onClick={() => { setSortBy('date'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>Fecha {sortBy === 'date' && sortDir === 'asc' ? '↑' : sortBy === 'date' && sortDir === 'desc' ? '↓' : ''}</th>
-                    <th>Precio Ticket</th>
-                    <th>Precio Conservadora</th>
-                    <th>Descripción</th>
-                    <th>Ubicación</th>
-                    <th>Imagen</th>
-                    <th onClick={() => { setSortBy('capacity'); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>Capacidad {sortBy === 'capacity' && sortDir === 'asc' ? '↑' : sortBy === 'capacity' && sortDir === 'desc' ? '↓' : ''}</th>
-                    <th>Tickets Vendidos</th>
-                    <th>Creado por</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedEvents.map((event, index) => (
-                    <tr key={event.id}>
-                      <td>{index + 1}</td>
-                      <td>{event.name}</td>
-                      <td>{event.date}</td>
-                      <td>${event.ticketPrice.toLocaleString('es-AR')}</td>
-                      <td>${event.coolerPrice.toLocaleString('es-AR')}</td>
-                      <td>{event.description}</td>
-                      <td>{event.location}</td>
-                      <td>
-                        {event.image && (
-                          <img src={event.image} alt="Event Image" style={{ maxWidth: '50px', maxHeight: '50px' }} />
-                        )}
-                      </td>
-                      <td>{event.capacity}</td>
-                      <td>{purchases.filter(p => p.eventId === event.id).reduce((sum, p) => sum + p.ticketQty, 0)} / {event.capacity}</td>
-                      <td>{event.createdBy}</td>
-                      <td>
-                        <Button
-                          variant="outline-info"
-                          size="sm"
-                          onClick={() => { setEventToEdit(event); setShowEventModal(true); }}
-                          className="btn-neon"
-                          style={{
-                            borderColor: '#00ffff',
-                            color: '#00ffff'
-                          }}
-                        >
-                          <QrCodeIcon style={{ width: '16px', height: '16px' }} className="me-1" />
-                          Generar QRs
-                        </Button>
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={() => { if (window.confirm('¿Eliminar?')) handleDeleteEvent(event.id); }}
-                          className="btn-neon"
-                          style={{
-                            borderColor: '#ff0000',
-                            color: '#ff0000'
-                          }}
-                        >
-                          <XCircleIcon style={{ width: '16px', height: '16px' }} className="me-1" />
-                          Eliminar
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-          </Card.Body>
-        </Card>
-      </motion.div>
     </div>
   )
 }

@@ -60,6 +60,7 @@ export default function App() {
   const [backgroundImage, setBackgroundImage] = useState(0)
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
+  const [ticketsSold, setTicketsSold] = useState(0);
   const selectedEvent = events.find(e => e.id === selectedEventId);
   
   const heroRef = useRef(null)
