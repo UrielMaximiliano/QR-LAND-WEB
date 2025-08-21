@@ -23,6 +23,8 @@ import {
   MusicalNoteIcon
 } from '@heroicons/react/24/solid'
 
+import { GoogleSheetsEventService } from './services/EventService';
+
 gsap.registerPlugin(ScrollTrigger)
 
 // Configuración de precios
@@ -56,12 +58,23 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [backgroundImage, setBackgroundImage] = useState(0)
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState('');
+  const selectedEvent = events.find(e => e.id === selectedEventId);
   
   const heroRef = useRef(null)
   const formRef = useRef<HTMLDivElement>(null)
   const featuresRef = useRef(null)
   
-  const total = (formData.ticketQty * ticketPrice) + (formData.coolerQty * coolerPrice)
+  const currentTicketPrice = selectedEvent?.ticketPrice || 5000;
+  const currentCoolerPrice = selectedEvent?.coolerPrice || 2000;
+  const total = (formData.ticketQty * currentTicketPrice) + (formData.coolerQty * currentCoolerPrice);
+
+  // Fetch eventos
+  useEffect(() => {
+    const service = new GoogleSheetsEventService();
+    service.getAllEvents().then(setEvents);
+  }, []);
 
   useEffect(() => {
     // Inicializar AOS
@@ -142,6 +155,8 @@ export default function App() {
         status: 'pendiente'
       })
 
+      params.append('eventId', selectedEventId);
+
       await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
@@ -171,7 +186,7 @@ export default function App() {
 
     await savePurchase()
 
-    const message = `🎉 *NUEVA COMPRA - TIKET NOW* 🎉\n\n` +
+    const message = `🎉 *NUEVA COMPRA - ${selectedEvent?.name || 'Evento'}* 🎉\n\n` +
       `👤 *Cliente:* ${formData.firstName} ${formData.lastName}\n` +
       `📱 *Teléfono:* ${formData.phone}\n` +
       `📧 *Email:* ${formData.email}\n` +
@@ -313,59 +328,31 @@ export default function App() {
       </section>
 
       {/* Features Section */}
-      <section ref={featuresRef} className="features-section py-5 mb-5">
+      <section className="events-section py-5 mb-5">
         <Container>
+          <h2 className="text-center text-white mb-5">Eventos Disponibles</h2>
           <Row className="g-4">
-            <Col md={4} data-aos="fade-up" data-aos-delay="100">
-              <Tilt tiltMaxAngleX={20} tiltMaxAngleY={20}>
-                <Card className="h-100 bg-dark text-white border-0" style={{
-                  background: 'linear-gradient(135deg, rgba(255,0,110,0.1), rgba(138,56,236,0.1))',
-                  backdropFilter: 'blur(10px)',
-                  boxShadow: '0 8px 32px rgba(255,0,110,0.3)'
-                }}>
-                  <Card.Body className="text-center p-5">
-                    <TicketIcon style={{ width: '60px', height: '60px', color: '#ff006e' }} className="mb-3" />
-                    <h4>Entrada General</h4>
-                    <h2 className="text-warning">${ticketPrice.toLocaleString('es-AR')}</h2>
-                    <p>Acceso completo al evento</p>
-                  </Card.Body>
-                </Card>
-              </Tilt>
-            </Col>
-            
-            <Col md={4} data-aos="fade-up" data-aos-delay="200">
-              <Tilt tiltMaxAngleX={20} tiltMaxAngleY={20}>
-                <Card className="h-100 bg-dark text-white border-0" style={{
-                  background: 'linear-gradient(135deg, rgba(251,86,7,0.1), rgba(255,190,11,0.1))',
-                  backdropFilter: 'blur(10px)',
-                  boxShadow: '0 8px 32px rgba(251,86,7,0.3)'
-                }}>
-                  <Card.Body className="text-center p-5">
-                    <SparklesIcon style={{ width: '60px', height: '60px', color: '#fb5607' }} className="mb-3" />
-                    <h4>Conservadora VIP</h4>
-                    <h2 className="text-warning">${coolerPrice.toLocaleString('es-AR')}</h2>
-                    <p>Mesa exclusiva con servicio</p>
-                  </Card.Body>
-                </Card>
-              </Tilt>
-            </Col>
-            
-            <Col md={4} data-aos="fade-up" data-aos-delay="300">
-              <Tilt tiltMaxAngleX={20} tiltMaxAngleY={20}>
-                <Card className="h-100 bg-dark text-white border-0" style={{
-                  background: 'linear-gradient(135deg, rgba(58,134,255,0.1), rgba(138,56,236,0.1))',
-                  backdropFilter: 'blur(10px)',
-                  boxShadow: '0 8px 32px rgba(58,134,255,0.3)'
-                }}>
-                  <Card.Body className="text-center p-5">
-                    <StarIcon style={{ width: '60px', height: '60px', color: '#3a86ff' }} className="mb-3" />
-                    <h4>Experiencia Premium</h4>
-                    <h2 className="text-warning">∞</h2>
-                    <p>Una noche inolvidable</p>
-                  </Card.Body>
-                </Card>
-              </Tilt>
-            </Col>
+            {events.map(event => (
+              <Col md={4} key={event.id}>
+                <Tilt>
+                  <Card onClick={() => { setSelectedEventId(event.id); formRef.current?.scrollIntoView({ behavior: 'smooth' }); }}>
+                    <Card.Img variant="top" src={event.image} />
+                    <Card.Body>
+                      <Card.Title>{event.name}</Card.Title>
+                      <Card.Text>Fecha: {event.date}</Card.Text>
+                      <Card.Text>Hora: {event.hour}</Card.Text>
+                      <Card.Text>Tema: {event.theme}</Card.Text>
+                      <Card.Text>Capacidad: {event.capacity}</Card.Text>
+                      <Card.Text>{event.description}</Card.Text>
+                      <Card.Text>Lugar: {event.location}</Card.Text>
+                      <Card.Text>Precio Ticket: ${event.ticketPrice}</Card.Text>
+                      <Card.Text>Precio VIP: ${event.coolerPrice}</Card.Text>
+                      <Button>Comprar</Button>
+                    </Card.Body>
+                  </Card>
+                </Tilt>
+              </Col>
+            ))}
           </Row>
         </Container>
       </section>
@@ -532,6 +519,23 @@ export default function App() {
                               </Form.Select>
                             </Form.Group>
                           </Col>
+
+                          {selectedEvent && (
+                            <Col md={12}>
+                              <Card className="mt-3">
+                                <Card.Img variant="top" src={selectedEvent.image} />
+                                <Card.Body>
+                                  <Card.Title>{selectedEvent.name}</Card.Title>
+                                  <Card.Text>Fecha: {selectedEvent.date}</Card.Text>
+                                  <Card.Text>Hora: {selectedEvent.hour}</Card.Text>
+                                  <Card.Text>Tema: {selectedEvent.theme}</Card.Text>
+                                  <Card.Text>Capacidad: {selectedEvent.capacity}</Card.Text>
+                                  <Card.Text>{selectedEvent.description}</Card.Text>
+                                  <Card.Text>Lugar: {selectedEvent.location}</Card.Text>
+                                </Card.Body>
+                              </Card>
+                            </Col>
+                          )}
                         </Row>
 
                         {/* Total animado */}
@@ -553,11 +557,15 @@ export default function App() {
                           </h1>
                         </motion.div>
 
+                        {selectedEvent && formData.ticketQty > (selectedEvent.capacity - ticketsSold) && (
+                          <Alert variant="warning">No hay suficientes tickets disponibles (máx: {selectedEvent.capacity - ticketsSold})</Alert>
+                        )}
+
                         <div className="d-grid">
                           <Button
                             type="submit"
                             size="lg"
-                            disabled={loading}
+                            disabled={loading || formData.ticketQty > (selectedEvent?.capacity - ticketsSold || 0)}
                             className="submit-button py-3"
                             style={{
                               background: loading 

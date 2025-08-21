@@ -11,6 +11,7 @@ export interface Purchase {
   paymentMethod: string
   total: number
   status: 'Pendiente' | 'Confirmado' | 'Enviado'
+  eventId: string;
 }
 
 export interface User {
@@ -23,4 +24,20 @@ export interface QRCode {
   content: string
   url: string
   ticketIndex: number
+}
+
+// Interfaz para eventos
+export interface Event {
+  id: string;
+  name: string;
+  date: string;
+  ticketPrice: number;
+  coolerPrice: number;
+  description: string;
+  location: string;
+  image: string;
+  createdBy: string;
+  hour: string;
+  theme: string;
+  capacity: number;
 }
