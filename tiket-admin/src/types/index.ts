@@ -24,3 +24,20 @@ export interface QRCode {
   url: string
   ticketIndex: number
 }
+
+// Interfaz para eventos - Event Manager
+export interface Event {
+  id: string
+  name: string
+  date: string
+  hour: string
+  description: string
+  location: string
+  image: string
+  ticketPrice: number
+  vipPrice: number
+  capacity: number
+  createdBy: string
+  createdAt: string
+  status: 'active' | 'inactive'
+}

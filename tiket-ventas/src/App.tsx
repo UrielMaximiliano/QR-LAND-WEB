@@ -1,7 +1,6 @@
-// Aplicación de venta de tickets con diseño premium y animaciones GSAP
-import { useState, useEffect, useRef } from 'react'
-import type { FormEvent } from 'react'
-import { Container, Row, Col, Form, Button, Card, Alert, Badge } from 'react-bootstrap'
+// Aplicación de venta de tickets con diseño premium y animaciones GSAP - Optimizada
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
+import { Container, Row, Col, Form, Button, Card, Alert, Badge, Spinner } from 'react-bootstrap'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -11,25 +10,18 @@ import 'aos/dist/aos.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import { 
   SparklesIcon, 
-  TicketIcon, 
-  CurrencyDollarIcon,
   UserIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  CreditCardIcon,
   ShoppingCartIcon,
   StarIcon,
   FireIcon,
-  MusicalNoteIcon
+  MusicalNoteIcon,
+  CalendarDaysIcon,
+  MapPinIcon
 } from '@heroicons/react/24/solid'
 
-import { GoogleSheetsEventService } from './services/EventService';
+import { GoogleSheetsEventService, type EventData } from './services/EventService';
 
 gsap.registerPlugin(ScrollTrigger)
-
-// Configuración de precios
-const ticketPrice = 5000
-const coolerPrice = 2000
 
 // URL del Google Apps Script
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxB9fgzC8d2Km8G0vr3zEl-1pBEOwnp5H09ZjRt32fJyrvoL3uzCC9kTilRxAUhY-CWw/exec'
@@ -43,38 +35,67 @@ const partyImages = [
   'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec'
 ]
 
-export default function App() {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    phone: '',
-    email: '',
-    ticketQty: 1,
-    coolerQty: 0,
-    paymentMethod: 'efectivo'
-  })
-  
-
+// Componente principal memoizado para máximo rendimiento
+const App = memo(function App() {
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [backgroundImage, setBackgroundImage] = useState(0)
-  const [events, setEvents] = useState<Event[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState('');
-  const [ticketsSold, setTicketsSold] = useState(0);
-  const selectedEvent = events.find(e => e.id === selectedEventId);
+  const [events, setEvents] = useState<EventData[]>([]);
+  const [expandedEventId, setExpandedEventId] = useState<string>('');
+  const [eventForms, setEventForms] = useState<{[key: string]: any}>({});
   
   const heroRef = useRef(null)
-  const formRef = useRef<HTMLDivElement>(null)
-  const featuresRef = useRef(null)
-  
-  const currentTicketPrice = selectedEvent?.ticketPrice || 5000;
-  const currentCoolerPrice = selectedEvent?.coolerPrice || 2000;
-  const total = (formData.ticketQty * currentTicketPrice) + (formData.coolerQty * currentCoolerPrice);
 
-  // Fetch eventos
+  // Función para obtener form data de un evento específico
+  const getEventFormData = (eventId: string) => {
+    return eventForms[eventId] || {
+      firstName: '',
+      lastName: '',
+      phone: '',
+      email: '',
+      ticketQty: 1,
+      coolerQty: 0,
+      paymentMethod: 'efectivo'
+    };
+  }
+
+  // Función para actualizar form data de un evento específico - Optimizada
+  const updateEventFormData = useCallback((eventId: string, field: string, value: any) => {
+    setEventForms(prev => ({
+      ...prev,
+      [eventId]: {
+        ...getEventFormData(eventId),
+        [field]: value
+      }
+    }));
+  }, [getEventFormData])
+
+  // Función para calcular total de un evento específico - Memoizada
+  const calculateTotal = useCallback((eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    const formData = getEventFormData(eventId);
+    const ticketPrice = event?.ticketPrice || 5000;
+    const vipPrice = event?.vipPrice || 2000;
+    return (formData.ticketQty * ticketPrice) + (formData.coolerQty * vipPrice);
+  }, [events, eventForms]);
+
+  // Fetch eventos con manejo optimizado de errores
   useEffect(() => {
-    const service = new GoogleSheetsEventService();
-    service.getAllEvents().then(setEvents);
+    const loadEventsWithRetry = async (retries = 3) => {
+      try {
+        const service = new GoogleSheetsEventService();
+        const eventsData = await service.getAllEvents();
+        setEvents(eventsData);
+      } catch (error) {
+        console.error('Error cargando eventos:', error);
+        if (retries > 0) {
+          console.log(`🔄 Reintentando... (${retries} intentos restantes)`);
+          setTimeout(() => loadEventsWithRetry(retries - 1), 2000);
+        }
+      }
+    };
+
+    loadEventsWithRetry();
   }, []);
 
   useEffect(() => {
@@ -134,29 +155,30 @@ export default function App() {
     }
   }, [])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: name.includes('Qty') ? parseInt(value) || 0 : value
-    }))
-  }
+  // Función para manejar cambios en formularios de eventos específicos - Optimizada
+  const handleEventInputChange = useCallback((eventId: string, field: string, value: any) => {
+    updateEventFormData(eventId, field, field.includes('Qty') ? parseInt(value) || 0 : value);
+  }, [updateEventFormData])
 
-  const savePurchase = async () => {
+  const savePurchase = async (eventId: string) => {
     try {
-      const params = new URLSearchParams({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
-        email: formData.email,
-        ticketQty: formData.ticketQty.toString(),
-        coolerQty: formData.coolerQty.toString(),
-        paymentMethod: formData.paymentMethod,
-        total: total.toString(),
-        status: 'pendiente'
-      })
+          const event = events.find(e => e.id === eventId);
+    const eventFormData = getEventFormData(eventId);
+    const total = calculateTotal(eventId);
 
-      params.append('eventId', selectedEventId);
+      const params = new URLSearchParams({
+        firstName: eventFormData.firstName,
+        lastName: eventFormData.lastName,
+        phone: eventFormData.phone,
+        email: eventFormData.email,
+        ticketQty: eventFormData.ticketQty.toString(),
+        coolerQty: eventFormData.coolerQty.toString(),
+        paymentMethod: eventFormData.paymentMethod,
+        total: total.toString(),
+        status: 'pendiente',
+        eventId: eventId,
+        eventName: event?.name || 'Sin evento'
+      })
 
       await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
@@ -173,27 +195,44 @@ export default function App() {
     }
   }
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
+  const handleEventSubmit = useCallback(async (eventId: string) => {
+    const eventFormData = getEventFormData(eventId);
+    
+    // Validaciones optimizadas
+    if (!eventFormData.firstName.trim() || !eventFormData.lastName.trim() || 
+        !eventFormData.phone.trim() || !eventFormData.email.trim()) {
+      alert('⚠️ Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eventFormData.email)) {
+      alert('⚠️ Por favor ingresa un email válido');
+      return;
+    }
+
     setLoading(true)
 
-    // Animación de procesamiento
-    gsap.to('.submit-button', {
+    // Animación de procesamiento optimizada
+    gsap.to(`#submit-button-${eventId}`, {
       scale: 0.95,
       duration: 0.1,
       yoyo: true,
       repeat: 1
     })
 
-    await savePurchase()
+    await savePurchase(eventId)
 
-    const message = `🎉 *NUEVA COMPRA - ${selectedEvent?.name || 'Evento'}* 🎉\n\n` +
-      `👤 *Cliente:* ${formData.firstName} ${formData.lastName}\n` +
-      `📱 *Teléfono:* ${formData.phone}\n` +
-      `📧 *Email:* ${formData.email}\n` +
-      `🎫 *Entradas:* ${formData.ticketQty}\n` +
-      `🧊 *Conservadoras:* ${formData.coolerQty}\n` +
-      `💳 *Método de Pago:* ${formData.paymentMethod}\n` +
+    const event = events.find(e => e.id === eventId);
+    const purchaseData = getEventFormData(eventId);
+    const total = calculateTotal(eventId);
+
+    const message = `🎉 *NUEVA COMPRA - ${event?.name || 'Evento'}* 🎉\n\n` +
+      `👤 *Cliente:* ${purchaseData.firstName} ${purchaseData.lastName}\n` +
+      `📱 *Teléfono:* ${purchaseData.phone}\n` +
+      `📧 *Email:* ${purchaseData.email}\n` +
+      `🎫 *Entradas:* ${purchaseData.ticketQty}\n` +
+      `🧊 *Conservadoras:* ${purchaseData.coolerQty}\n` +
+      `💳 *Método de Pago:* ${purchaseData.paymentMethod}\n` +
       `💰 *TOTAL:* $${total.toLocaleString('es-AR')}\n\n` +
       `_Por favor, enviar comprobante de pago_`
 
@@ -204,21 +243,25 @@ export default function App() {
       setShowSuccess(true)
       window.open(whatsappUrl, '_blank')
       
-      // Resetear formulario después de 3 segundos
+      // Resetear formulario del evento después de 3 segundos
       setTimeout(() => {
         setShowSuccess(false)
-        setFormData({
-          firstName: '',
-          lastName: '',
-          phone: '',
-          email: '',
-          ticketQty: 1,
-          coolerQty: 0,
-          paymentMethod: 'efectivo'
-        })
+        setEventForms(prev => ({
+          ...prev,
+          [eventId]: {
+            firstName: '',
+            lastName: '',
+            phone: '',
+            email: '',
+            ticketQty: 1,
+            coolerQty: 0,
+            paymentMethod: 'efectivo'
+          }
+        }));
+        setExpandedEventId(''); // Cerrar el formulario
       }, 3000)
     }, 1500)
-  }
+  }, [events, getEventFormData, calculateTotal, savePurchase])
 
   return (
     <div className="app-container">
@@ -285,320 +328,288 @@ export default function App() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300
                 }}>
-                  La Fiesta Más Épica del Año
+                  Elige tu Evento Favorito
                 </h2>
 
                 <div className="d-flex justify-content-center gap-3 flex-wrap mb-5">
                   <Badge className="hero-badge p-3 bg-gradient" style={{ background: 'linear-gradient(45deg, #ff006e, #8338ec)' }}>
                     <MusicalNoteIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                    DJ Internacional
+                    Múltiples Eventos
                   </Badge>
                   <Badge className="hero-badge p-3 bg-gradient" style={{ background: 'linear-gradient(45deg, #fb5607, #ffbe0b)' }}>
                     <StarIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                    Open Bar
+                    Precios Dinámicos
                   </Badge>
                   <Badge className="hero-badge p-3 bg-gradient" style={{ background: 'linear-gradient(45deg, #3a86ff, #8338ec)' }}>
                     <SparklesIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                    Show en Vivo
+                    Experiencias Únicas
                   </Badge>
-      </div>
-
-                <motion.div
-                  animate={{ y: [0, 10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <Button
-                    size="lg"
-                    className="px-5 py-3"
-                    style={{
-                      background: 'linear-gradient(45deg, #ff006e, #8338ec)',
-                      border: 'none',
-                      fontSize: '1.5rem',
-                      fontWeight: 'bold',
-                      boxShadow: '0 10px 30px rgba(255,0,110,0.5)'
-                    }}
-                    onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                  >
-                    COMPRAR AHORA
-                  </Button>
-                </motion.div>
+                </div>
               </motion.div>
             </Col>
           </Row>
         </Container>
       </section>
 
-      {/* Features Section */}
+      {/* Eventos Disponibles */}
       <section className="events-section py-5 mb-5">
         <Container>
           <h2 className="text-center text-white mb-5">Eventos Disponibles</h2>
-          <Row className="g-4">
-            {events.map(event => (
-              <Col md={4} key={event.id}>
-                <Tilt>
-                  <Card onClick={() => { setSelectedEventId(event.id); formRef.current?.scrollIntoView({ behavior: 'smooth' }); }}>
-                    <Card.Img variant="top" src={event.image} />
-                    <Card.Body>
-                      <Card.Title>{event.name}</Card.Title>
-                      <Card.Text>Fecha: {event.date}</Card.Text>
-                      <Card.Text>Hora: {event.hour}</Card.Text>
-                      <Card.Text>Tema: {event.theme}</Card.Text>
-                      <Card.Text>Capacidad: {event.capacity}</Card.Text>
-                      <Card.Text>{event.description}</Card.Text>
-                      <Card.Text>Lugar: {event.location}</Card.Text>
-                      <Card.Text>Precio Ticket: ${event.ticketPrice}</Card.Text>
-                      <Card.Text>Precio VIP: ${event.coolerPrice}</Card.Text>
-                      <Button>Comprar</Button>
-                    </Card.Body>
-                  </Card>
-                </Tilt>
-              </Col>
-            ))}
-          </Row>
-        </Container>
-      </section>
-
-      {/* Formulario de Compra */}
-      <section ref={formRef} className="form-section py-5">
-        <Container>
-          <Row className="justify-content-center">
-            <Col lg={8}>
-              <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8 }}
-                viewport={{ once: true }}
-              >
-                <Card className="shadow-lg border-0" style={{
-                  background: 'rgba(0,0,0,0.8)',
-                  backdropFilter: 'blur(20px)',
-                  borderRadius: '20px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    background: 'linear-gradient(45deg, #ff006e, #8338ec)',
-                    padding: '3px'
-                  }}>
-                    <Card.Body className="p-5" style={{ background: 'rgba(0,0,0,0.95)' }}>
-                      <h2 className="text-center mb-5 text-white" style={{
-                        fontFamily: "'Bebas Neue', sans-serif",
-                        fontSize: '3rem',
-                        letterSpacing: '3px',
-                        textShadow: '0 0 20px rgba(255,0,110,0.5)'
-                      }}>
-                        <ShoppingCartIcon style={{ width: '50px', height: '50px' }} className="me-3" />
-                        COMPRA TUS TICKETS
-                      </h2>
-
-                      <Form onSubmit={handleSubmit}>
-                        <Row className="g-4">
-                          <Col md={6}>
-                            <Form.Group>
-                              <Form.Label className="text-white d-flex align-items-center">
-                                <UserIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                                Nombre
-                              </Form.Label>
-                              <Form.Control
-                                type="text"
-                                name="firstName"
-                                value={formData.firstName}
-                                onChange={handleInputChange}
-                                required
-                                className="bg-dark text-white border-secondary"
-                                style={{ borderRadius: '10px' }}
-                              />
-                            </Form.Group>
-                          </Col>
-
-                          <Col md={6}>
-                            <Form.Group>
-                              <Form.Label className="text-white d-flex align-items-center">
-                                <UserIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                                Apellido
-                              </Form.Label>
-                              <Form.Control
-                                type="text"
-                                name="lastName"
-                                value={formData.lastName}
-                                onChange={handleInputChange}
-                                required
-                                className="bg-dark text-white border-secondary"
-                                style={{ borderRadius: '10px' }}
-                              />
-                            </Form.Group>
-                          </Col>
-
-                          <Col md={6}>
-                            <Form.Group>
-                              <Form.Label className="text-white d-flex align-items-center">
-                                <PhoneIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                                Teléfono
-                              </Form.Label>
-                              <Form.Control
-                                type="tel"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleInputChange}
-                                required
-                                className="bg-dark text-white border-secondary"
-                                style={{ borderRadius: '10px' }}
-                              />
-                            </Form.Group>
-                          </Col>
-
-                          <Col md={6}>
-                            <Form.Group>
-                              <Form.Label className="text-white d-flex align-items-center">
-                                <EnvelopeIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                                Email
-                              </Form.Label>
-                              <Form.Control
-                                type="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleInputChange}
-                                required
-                                className="bg-dark text-white border-secondary"
-                                style={{ borderRadius: '10px' }}
-                              />
-                            </Form.Group>
-                          </Col>
-
-                          <Col md={4}>
-                            <Form.Group>
-                              <Form.Label className="text-white d-flex align-items-center">
-                                <TicketIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                                Cantidad de Entradas
-                              </Form.Label>
-                              <Form.Control
-                                type="number"
-                                name="ticketQty"
-                                value={formData.ticketQty}
-                                onChange={handleInputChange}
-                                min="1"
-                                required
-                                className="bg-dark text-white border-secondary"
-                                style={{ borderRadius: '10px' }}
-                              />
-                            </Form.Group>
-                          </Col>
-
-                          <Col md={4}>
-                            <Form.Group>
-                              <Form.Label className="text-white d-flex align-items-center">
-                                <SparklesIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                                Conservadoras VIP
-                              </Form.Label>
-                              <Form.Control
-                                type="number"
-                                name="coolerQty"
-                                value={formData.coolerQty}
-                                onChange={handleInputChange}
-                                min="0"
-                                className="bg-dark text-white border-secondary"
-                                style={{ borderRadius: '10px' }}
-                              />
-                            </Form.Group>
-                          </Col>
-
-                          <Col md={4}>
-                            <Form.Group>
-                              <Form.Label className="text-white d-flex align-items-center">
-                                <CreditCardIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                                Método de Pago
-                              </Form.Label>
-                              <Form.Select
-                                name="paymentMethod"
-                                value={formData.paymentMethod}
-                                onChange={handleInputChange}
-                                className="bg-dark text-white border-secondary"
-                                style={{ borderRadius: '10px' }}
-                              >
-                                <option value="efectivo">Efectivo</option>
-                                <option value="transferencia">Transferencia</option>
-                                <option value="mercadopago">MercadoPago</option>
-                              </Form.Select>
-                            </Form.Group>
-                          </Col>
-
-                          {selectedEvent && (
-                            <Col md={12}>
-                              <Card className="mt-3">
-                                <Card.Img variant="top" src={selectedEvent.image} />
-                                <Card.Body>
-                                  <Card.Title>{selectedEvent.name}</Card.Title>
-                                  <Card.Text>Fecha: {selectedEvent.date}</Card.Text>
-                                  <Card.Text>Hora: {selectedEvent.hour}</Card.Text>
-                                  <Card.Text>Tema: {selectedEvent.theme}</Card.Text>
-                                  <Card.Text>Capacidad: {selectedEvent.capacity}</Card.Text>
-                                  <Card.Text>{selectedEvent.description}</Card.Text>
-                                  <Card.Text>Lugar: {selectedEvent.location}</Card.Text>
-                                </Card.Body>
-                              </Card>
-                            </Col>
-                          )}
-                        </Row>
-
-                        {/* Total animado */}
-                        <motion.div
-                          className="text-center my-5 p-4 rounded"
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(255,0,110,0.1), rgba(138,56,236,0.1))',
-                            border: '2px solid rgba(255,0,110,0.5)'
+          {events.length === 0 ? (
+            <div className="text-center py-5">
+              <CalendarDaysIcon style={{ width: '80px', height: '80px', color: '#666' }} className="mb-4" />
+              <h3 className="text-white mb-3">No hay eventos disponibles</h3>
+              <p className="text-muted">Los eventos creados por los administradores aparecerán aquí.</p>
+            </div>
+          ) : (
+            <Row className="g-4">
+              {events.map(event => (
+                <Col md={6} lg={4} key={event.id}>
+                  <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10}>
+                    <Card 
+                      className="h-100 bg-dark text-white border-0" 
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(255,0,110,0.1), rgba(138,56,236,0.1))',
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 8px 32px rgba(255,0,110,0.3)',
+                        borderRadius: '15px',
+                        transition: 'all 0.3s ease'
+                      }}
+                    >
+                      {event.image && (
+                        <Card.Img 
+                          variant="top" 
+                          src={event.image} 
+                          loading="lazy"
+                          alt={`Imagen de ${event.name}`}
+                          style={{ 
+                            height: '200px', 
+                            objectFit: 'cover', 
+                            borderRadius: '15px 15px 0 0',
+                            transition: 'transform 0.3s ease'
                           }}
-                          animate={{ scale: [1, 1.05, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
-                          <h3 className="text-white mb-0">
-                            <CurrencyDollarIcon style={{ width: '40px', height: '40px' }} className="me-2" />
-                            TOTAL A PAGAR
-                          </h3>
-                          <h1 className="text-warning display-3 fw-bold">
-                            ${total.toLocaleString('es-AR')}
-                          </h1>
-                        </motion.div>
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        />
+                      )}
+                      <Card.Body className="p-4">
+                        <Card.Title className="mb-3" style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>
+                          {event.name}
+                        </Card.Title>
+                        
+                        <div className="mb-3">
+                          <Card.Text className="mb-1">
+                            <CalendarDaysIcon style={{ width: '16px', height: '16px' }} className="me-2" />
+                            <strong>{event.date} - {event.hour}</strong>
+                          </Card.Text>
+                          <Card.Text className="mb-2">
+                            <MapPinIcon style={{ width: '16px', height: '16px' }} className="me-2" />
+                            {event.location}
+                          </Card.Text>
+                        </div>
 
-                        {selectedEvent && formData.ticketQty > (selectedEvent.capacity - ticketsSold) && (
-                          <Alert variant="warning">No hay suficientes tickets disponibles (máx: {selectedEvent.capacity - ticketsSold})</Alert>
-                        )}
+                        <Card.Text className="text-muted mb-3" style={{ fontSize: '0.9rem' }}>
+                          {event.description}
+                        </Card.Text>
 
-                        <div className="d-grid">
+                        <div className="row g-2 mb-3">
+                          <div className="col-6">
+                            <div className="text-center p-2 bg-dark rounded">
+                              <small className="text-muted d-block">Entrada General</small>
+                              <strong className="text-info">${event.ticketPrice.toLocaleString('es-AR')}</strong>
+                            </div>
+                          </div>
+                          <div className="col-6">
+                            <div className="text-center p-2 bg-dark rounded">
+                              <small className="text-muted d-block">VIP</small>
+                              <strong className="text-warning">${event.vipPrice.toLocaleString('es-AR')}</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-center mb-3">
+                          <small className="text-muted">Capacidad: </small>
+                          <strong>{event.capacity} personas</strong>
+                        </div>
+
+                        {/* Botón para expandir/contraer formulario */}
+                        <div className="d-grid mb-3">
                           <Button
-                            type="submit"
                             size="lg"
-                            disabled={loading || formData.ticketQty > (selectedEvent?.capacity - ticketsSold || 0)}
-                            className="submit-button py-3"
+                            onClick={() => setExpandedEventId(expandedEventId === event.id ? '' : event.id)}
                             style={{
-                              background: loading 
-                                ? 'linear-gradient(45deg, #666, #999)' 
+                              background: expandedEventId === event.id 
+                                ? 'linear-gradient(45deg, #28a745, #20c997)' 
                                 : 'linear-gradient(45deg, #ff006e, #8338ec)',
                               border: 'none',
-                              fontSize: '1.5rem',
                               fontWeight: 'bold',
-                              borderRadius: '15px',
-                              transition: 'all 0.3s ease'
+                              borderRadius: '10px'
                             }}
                           >
-                            {loading ? (
-                              <>
-                                <span className="spinner-border spinner-border-sm me-2" />
-                                Procesando...
-                              </>
-                            ) : (
-                              <>
-                                <ShoppingCartIcon style={{ width: '30px', height: '30px' }} className="me-2" />
-                                FINALIZAR COMPRA
-                              </>
-                            )}
+                            <ShoppingCartIcon style={{ width: '20px', height: '20px' }} className="me-2" />
+                            {expandedEventId === event.id ? 'Cerrar Formulario' : 'Comprar Tickets'}
                           </Button>
                         </div>
-                      </Form>
-                    </Card.Body>
-                  </div>
-                </Card>
-              </motion.div>
-            </Col>
-          </Row>
+
+                        {/* Formulario expandible */}
+                        <AnimatePresence>
+                          {expandedEventId === event.id && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.3 }}
+                              style={{ overflow: 'hidden' }}
+                            >
+                              <div className="border-top border-secondary pt-4 mt-3">
+                                <h6 className="text-center mb-3">
+                                  <UserIcon style={{ width: '20px', height: '20px' }} className="me-2" />
+                                  Datos del Comprador
+                                </h6>
+                                
+                                <Row className="g-3">
+                                  <Col md={6}>
+                                    <Form.Group>
+                                      <Form.Label>Nombre</Form.Label>
+                                      <Form.Control
+                                        type="text"
+                                        value={getEventFormData(event.id).firstName}
+                                        onChange={(e) => handleEventInputChange(event.id, 'firstName', e.target.value)}
+                                        required
+                                        className="bg-dark text-white border-secondary"
+                                        placeholder="Tu nombre"
+                                      />
+                                    </Form.Group>
+                                  </Col>
+                                  <Col md={6}>
+                                    <Form.Group>
+                                      <Form.Label>Apellido</Form.Label>
+                                      <Form.Control
+                                        type="text"
+                                        value={getEventFormData(event.id).lastName}
+                                        onChange={(e) => handleEventInputChange(event.id, 'lastName', e.target.value)}
+                                        required
+                                        className="bg-dark text-white border-secondary"
+                                        placeholder="Tu apellido"
+                                      />
+                                    </Form.Group>
+                                  </Col>
+                                  <Col md={6}>
+                                    <Form.Group>
+                                      <Form.Label>Teléfono</Form.Label>
+                                      <Form.Control
+                                        type="tel"
+                                        value={getEventFormData(event.id).phone}
+                                        onChange={(e) => handleEventInputChange(event.id, 'phone', e.target.value)}
+                                        required
+                                        className="bg-dark text-white border-secondary"
+                                        placeholder="Tu teléfono"
+                                      />
+                                    </Form.Group>
+                                  </Col>
+                                  <Col md={6}>
+                                    <Form.Group>
+                                      <Form.Label>Email</Form.Label>
+                                      <Form.Control
+                                        type="email"
+                                        value={getEventFormData(event.id).email}
+                                        onChange={(e) => handleEventInputChange(event.id, 'email', e.target.value)}
+                                        required
+                                        className="bg-dark text-white border-secondary"
+                                        placeholder="tu@email.com"
+                                      />
+                                    </Form.Group>
+                                  </Col>
+                                  <Col md={4}>
+                                    <Form.Group>
+                                      <Form.Label>Entradas</Form.Label>
+                                      <Form.Control
+                                        type="number"
+                                        value={getEventFormData(event.id).ticketQty}
+                                        onChange={(e) => handleEventInputChange(event.id, 'ticketQty', e.target.value)}
+                                        min="1"
+                                        required
+                                        className="bg-dark text-white border-secondary"
+                                      />
+                                    </Form.Group>
+                                  </Col>
+                                  <Col md={4}>
+                                    <Form.Group>
+                                      <Form.Label>VIP</Form.Label>
+                                      <Form.Control
+                                        type="number"
+                                        value={getEventFormData(event.id).coolerQty}
+                                        onChange={(e) => handleEventInputChange(event.id, 'coolerQty', e.target.value)}
+                                        min="0"
+                                        className="bg-dark text-white border-secondary"
+                                      />
+                                    </Form.Group>
+                                  </Col>
+                                  <Col md={4}>
+                                    <Form.Group>
+                                      <Form.Label>Pago</Form.Label>
+                                      <Form.Select
+                                        value={getEventFormData(event.id).paymentMethod}
+                                        onChange={(e) => handleEventInputChange(event.id, 'paymentMethod', e.target.value)}
+                                        className="bg-dark text-white border-secondary"
+                                      >
+                                        <option value="efectivo">Efectivo</option>
+                                        <option value="transferencia">Transferencia</option>
+                                        <option value="mercadopago">MercadoPago</option>
+                                      </Form.Select>
+                                    </Form.Group>
+                                  </Col>
+                                </Row>
+
+                                {/* Total */}
+                                <div className="text-center my-4 p-3 rounded" style={{
+                                  background: 'linear-gradient(135deg, rgba(255,0,110,0.1), rgba(138,56,236,0.1))',
+                                  border: '2px solid rgba(255,0,110,0.5)'
+                                }}>
+                                  <h5 className="text-white mb-0">TOTAL A PAGAR</h5>
+                                  <h3 className="text-warning mb-0">${calculateTotal(event.id).toLocaleString('es-AR')}</h3>
+                                </div>
+
+                                {/* Botón de compra */}
+                                <div className="d-grid">
+                                  <Button
+                                    id={`submit-button-${event.id}`}
+                                    onClick={() => handleEventSubmit(event.id)}
+                                    disabled={loading}
+                                    size="lg"
+                                    style={{
+                                      background: loading 
+                                        ? 'linear-gradient(45deg, #666, #999)' 
+                                        : 'linear-gradient(45deg, #ff006e, #8338ec)',
+                                      border: 'none',
+                                      fontWeight: 'bold',
+                                      borderRadius: '10px'
+                                    }}
+                                  >
+                                    {loading ? (
+                                      <>
+                                        <Spinner size="sm" className="me-2" />
+                                        Procesando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ShoppingCartIcon style={{ width: '20px', height: '20px' }} className="me-2" />
+                                        FINALIZAR COMPRA
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </Card.Body>
+                    </Card>
+                  </Tilt>
+                </Col>
+              ))}
+            </Row>
+          )}
         </Container>
       </section>
 
@@ -688,4 +699,6 @@ export default function App() {
       `}</style>
     </div>
   )
-}
+})
+
+export default App
