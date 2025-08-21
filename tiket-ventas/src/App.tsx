@@ -304,34 +304,36 @@ const App = memo(function App() {
         ))}
       </div>
 
-      {/* Hero Section */}
-      <section ref={heroRef} className="hero-section py-5 mb-5">
+      {/* Hero Section - Responsive */}
+      <section ref={heroRef} className="hero-section py-4 py-md-5 mb-4 mb-md-5">
         <Container>
           <Row className="align-items-center min-vh-100">
-            <Col lg={12} className="text-center">
+            <Col lg={12} className="text-center px-3">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 1 }}
               >
-                <h1 className="hero-title display-1 fw-bold text-white mb-4" style={{
+                <h1 className="hero-title display-2 display-md-1 fw-bold text-white mb-3 mb-md-4" style={{
                   textShadow: '0 0 30px rgba(255,0,110,0.5), 0 0 60px rgba(138,56,236,0.3)',
                   fontFamily: "'Bebas Neue', sans-serif",
-                  letterSpacing: '5px'
+                  letterSpacing: '3px',
+                  fontSize: 'clamp(2.5rem, 8vw, 5rem)'
                 }}>
-                  <FireIcon className="d-inline-block me-3" style={{ width: '80px', height: '80px' }} />
+                  <FireIcon className="d-inline-block me-2 me-md-3" style={{ width: 'clamp(40px, 10vw, 80px)', height: 'clamp(40px, 10vw, 80px)' }} />
                   TIKET NOW
-                  <FireIcon className="d-inline-block ms-3" style={{ width: '80px', height: '80px' }} />
+                  <FireIcon className="d-inline-block ms-2 ms-md-3" style={{ width: 'clamp(40px, 10vw, 80px)', height: 'clamp(40px, 10vw, 80px)' }} />
                 </h1>
                 
-                <h2 className="hero-subtitle h3 text-warning mb-5" style={{
+                <h2 className="hero-subtitle h4 h-md-3 text-warning mb-4 mb-md-5" style={{
                   fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300
+                  fontWeight: 300,
+                  fontSize: 'clamp(1.2rem, 4vw, 1.75rem)'
                 }}>
                   Elige tu Evento Favorito
                 </h2>
 
-                <div className="d-flex justify-content-center gap-3 flex-wrap mb-5">
+                <div className="d-flex justify-content-center gap-2 gap-md-3 flex-wrap mb-4 mb-md-5">
                   <Badge className="hero-badge p-3 bg-gradient" style={{ background: 'linear-gradient(45deg, #ff006e, #8338ec)' }}>
                     <MusicalNoteIcon style={{ width: '20px', height: '20px' }} className="me-2" />
                     Múltiples Eventos
@@ -351,10 +353,12 @@ const App = memo(function App() {
         </Container>
       </section>
 
-      {/* Eventos Disponibles */}
-      <section className="events-section py-5 mb-5">
+      {/* Eventos Disponibles - Responsive */}
+      <section className="events-section py-4 py-md-5 mb-4 mb-md-5">
         <Container>
-          <h2 className="text-center text-white mb-5">Eventos Disponibles</h2>
+          <h2 className="text-center text-white mb-4 mb-md-5" style={{ fontSize: 'clamp(1.8rem, 5vw, 2.5rem)' }}>
+            Eventos Disponibles
+          </h2>
           {events.length === 0 ? (
             <div className="text-center py-5">
               <CalendarDaysIcon style={{ width: '80px', height: '80px', color: '#666' }} className="mb-4" />
@@ -362,9 +366,9 @@ const App = memo(function App() {
               <p className="text-muted">Los eventos creados por los administradores aparecerán aquí.</p>
             </div>
           ) : (
-            <Row className="g-4">
+            <Row className="g-3 g-md-4">
               {events.map(event => (
-                <Col md={6} lg={4} key={event.id}>
+                <Col xl={4} lg={6} md={6} sm={12} key={event.id}>
                   <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10}>
                     <Card 
                       className="h-100 bg-dark text-white border-0" 
@@ -383,7 +387,7 @@ const App = memo(function App() {
                           loading="lazy"
                           alt={`Imagen de ${event.name}`}
                           style={{ 
-                            height: '200px', 
+                            height: 'clamp(150px, 25vw, 200px)', 
                             objectFit: 'cover', 
                             borderRadius: '15px 15px 0 0',
                             transition: 'transform 0.3s ease'
@@ -392,8 +396,11 @@ const App = memo(function App() {
                           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                         />
                       )}
-                      <Card.Body className="p-4">
-                        <Card.Title className="mb-3" style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>
+                      <Card.Body className="p-3 p-md-4">
+                        <Card.Title className="mb-3" style={{ 
+                          fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', 
+                          fontWeight: 'bold' 
+                        }}>
                           {event.name}
                         </Card.Title>
                         
@@ -467,8 +474,8 @@ const App = memo(function App() {
                                   Datos del Comprador
                                 </h6>
                                 
-                                <Row className="g-3">
-                                  <Col md={6}>
+                                                                 <Row className="g-2 g-md-3">
+                                   <Col lg={6} md={12} sm={12}>
                                     <Form.Group>
                                       <Form.Label>Nombre</Form.Label>
                                       <Form.Control
@@ -481,9 +488,9 @@ const App = memo(function App() {
                                       />
                                     </Form.Group>
                                   </Col>
-                                  <Col md={6}>
-                                    <Form.Group>
-                                      <Form.Label>Apellido</Form.Label>
+                                                                     <Col lg={6} md={12} sm={12}>
+                                     <Form.Group>
+                                       <Form.Label>Apellido</Form.Label>
                                       <Form.Control
                                         type="text"
                                         value={getEventFormData(event.id).lastName}
@@ -494,9 +501,9 @@ const App = memo(function App() {
                                       />
                                     </Form.Group>
                                   </Col>
-                                  <Col md={6}>
-                                    <Form.Group>
-                                      <Form.Label>Teléfono</Form.Label>
+                                                                     <Col lg={6} md={12} sm={12}>
+                                     <Form.Group>
+                                       <Form.Label>Teléfono</Form.Label>
                                       <Form.Control
                                         type="tel"
                                         value={getEventFormData(event.id).phone}
@@ -507,9 +514,9 @@ const App = memo(function App() {
                                       />
                                     </Form.Group>
                                   </Col>
-                                  <Col md={6}>
-                                    <Form.Group>
-                                      <Form.Label>Email</Form.Label>
+                                                                     <Col lg={6} md={12} sm={12}>
+                                     <Form.Group>
+                                       <Form.Label>Email</Form.Label>
                                       <Form.Control
                                         type="email"
                                         value={getEventFormData(event.id).email}
@@ -520,9 +527,9 @@ const App = memo(function App() {
                                       />
                                     </Form.Group>
                                   </Col>
-                                  <Col md={4}>
-                                    <Form.Group>
-                                      <Form.Label>Entradas</Form.Label>
+                                                                     <Col lg={4} md={6} sm={12}>
+                                     <Form.Group>
+                                       <Form.Label>Entradas</Form.Label>
                                       <Form.Control
                                         type="number"
                                         value={getEventFormData(event.id).ticketQty}
@@ -533,9 +540,9 @@ const App = memo(function App() {
                                       />
                                     </Form.Group>
                                   </Col>
-                                  <Col md={4}>
-                                    <Form.Group>
-                                      <Form.Label>VIP</Form.Label>
+                                                                     <Col lg={4} md={6} sm={12}>
+                                     <Form.Group>
+                                       <Form.Label>VIP</Form.Label>
                                       <Form.Control
                                         type="number"
                                         value={getEventFormData(event.id).coolerQty}
@@ -545,9 +552,9 @@ const App = memo(function App() {
                                       />
                                     </Form.Group>
                                   </Col>
-                                  <Col md={4}>
-                                    <Form.Group>
-                                      <Form.Label>Pago</Form.Label>
+                                                                     <Col lg={4} md={12} sm={12}>
+                                     <Form.Group>
+                                       <Form.Label>Pago</Form.Label>
                                       <Form.Select
                                         value={getEventFormData(event.id).paymentMethod}
                                         onChange={(e) => handleEventInputChange(event.id, 'paymentMethod', e.target.value)}
@@ -695,6 +702,49 @@ const App = memo(function App() {
         
         ::-webkit-scrollbar-thumb:hover {
           background: linear-gradient(45deg, #ff006e, #fb5607);
+        }
+        
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+          .hero-section {
+            min-height: 70vh !important;
+          }
+          
+          .particles-container {
+            display: none; /* Ocultar partículas en móviles para mejor performance */
+          }
+          
+          .hero-badge {
+            padding: 0.5rem 1rem !important;
+            font-size: 0.8rem !important;
+          }
+          
+          .card-body {
+            padding: 1rem !important;
+          }
+          
+          .table-responsive {
+            font-size: 0.85rem;
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .hero-section {
+            min-height: 60vh !important;
+            padding: 2rem 0 !important;
+          }
+          
+          .events-section {
+            padding: 2rem 0 !important;
+          }
+          
+          .btn {
+            font-size: 0.9rem !important;
+          }
+          
+          .card-title {
+            font-size: 1.1rem !important;
+          }
         }
       `}</style>
     </div>

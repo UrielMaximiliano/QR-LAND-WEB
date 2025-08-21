@@ -271,6 +271,54 @@ export default function App() {
           border-radius: 15px;
         }
         
+        /* Responsive Styles para Admin */
+        @media (max-width: 768px) {
+          .admin-header h1 {
+            font-size: 1.8rem !important;
+            letter-spacing: 2px !important;
+          }
+          
+          .card-body {
+            padding: 1rem !important;
+          }
+          
+          .table-responsive {
+            font-size: 0.85rem;
+          }
+          
+          .btn-neon {
+            font-size: 0.85rem !important;
+            padding: 0.5rem 1rem !important;
+          }
+          
+          .display-5 {
+            font-size: 1.5rem !important;
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .admin-header {
+            padding: 1rem 0 !important;
+          }
+          
+          .admin-header h1 {
+            font-size: 1.5rem !important;
+            letter-spacing: 1px !important;
+          }
+          
+          .dashboard {
+            padding: 0 0.5rem;
+          }
+          
+          .modal-body {
+            padding: 1rem !important;
+          }
+          
+          .btn {
+            font-size: 0.85rem !important;
+          }
+        }
+        
         /* Efecto hover para tablas */
         .table-hover tbody tr:hover {
           background: rgba(0,255,255,0.1) !important;

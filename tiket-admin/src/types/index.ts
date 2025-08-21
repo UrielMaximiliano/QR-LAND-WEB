@@ -11,6 +11,8 @@ export interface Purchase {
   paymentMethod: string
   total: number
   status: 'Pendiente' | 'Confirmado' | 'Enviado'
+  eventId?: string // Campo opcional para filtrar por evento
+  eventName?: string // Nombre del evento para mejor UX
 }
 
 export interface User {

@@ -56,7 +56,9 @@ export class GoogleSheetsPurchaseService implements PurchaseService {
           coolerQty: parseInt(cols[6]) || 0,
           paymentMethod: cols[7] || '',
           total: parseFloat(cols[8]) || 0,
-          status: this.parseStatus(cols[9])
+          status: this.parseStatus(cols[9]),
+          eventId: cols[10] || '', // ID del evento (si existe)
+          eventName: cols[11] || '' // Nombre del evento (si existe)
         })
       }
     }

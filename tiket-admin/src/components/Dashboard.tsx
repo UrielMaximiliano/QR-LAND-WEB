@@ -42,6 +42,7 @@ export const Dashboard = memo(function Dashboard() {
   const [eventsLoading, setEventsLoading] = useState(true)
   const [showEventModal, setShowEventModal] = useState(false)
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null)
+  const [selectedEventFilter, setSelectedEventFilter] = useState<string>('all') // Filtro por evento
   const [newEvent, setNewEvent] = useState({
     name: '',
     date: '',
@@ -196,34 +197,43 @@ export const Dashboard = memo(function Dashboard() {
 
 
 
-  // Cálculos para estadísticas - Memoizados para optimizar performance
+  // Filtrar compras por evento seleccionado
+  const filteredPurchases = useMemo(() => {
+    if (selectedEventFilter === 'all') return purchases;
+    return purchases.filter(p => p.eventId === selectedEventFilter);
+  }, [purchases, selectedEventFilter]);
+
+  // Cálculos para estadísticas - Memoizados y filtrados por evento
   const statistics = useMemo(() => {
-    const totalRevenue = purchases.reduce((sum, p) => sum + p.total, 0)
-    const totalTickets = purchases.reduce((sum, p) => sum + p.ticketQty, 0)
-    const totalCoolers = purchases.reduce((sum, p) => sum + p.coolerQty, 0)
-    const pendingCount = purchases.filter(p => p.status === 'Pendiente').length
-    const confirmedCount = purchases.filter(p => p.status === 'Confirmado').length
+    const relevantPurchases = filteredPurchases;
+    const totalRevenue = relevantPurchases.reduce((sum, p) => sum + p.total, 0)
+    const totalTickets = relevantPurchases.reduce((sum, p) => sum + p.ticketQty, 0)
+    const totalCoolers = relevantPurchases.reduce((sum, p) => sum + p.coolerQty, 0)
+    const pendingCount = relevantPurchases.filter(p => p.status === 'Pendiente').length
+    const confirmedCount = relevantPurchases.filter(p => p.status === 'Confirmado').length
     
     return {
       totalRevenue,
       totalTickets,
       totalCoolers,
       pendingCount,
-      confirmedCount
+      confirmedCount,
+      totalPurchases: relevantPurchases.length
     }
-  }, [purchases])
+  }, [filteredPurchases])
 
 
 
-  // Datos para gráficos - Memoizados para evitar recálculos innecesarios
+  // Datos para gráficos - Memoizados y filtrados por evento
   const chartData = useMemo(() => {
+    const relevantPurchases = filteredPurchases;
     const paymentMethodData = {
       labels: ['Efectivo', 'Transferencia', 'MercadoPago'],
       datasets: [{
         data: [
-          purchases.filter(p => p.paymentMethod === 'efectivo').length,
-          purchases.filter(p => p.paymentMethod === 'transferencia').length,
-          purchases.filter(p => p.paymentMethod === 'mercadopago').length
+          relevantPurchases.filter(p => p.paymentMethod === 'efectivo').length,
+          relevantPurchases.filter(p => p.paymentMethod === 'transferencia').length,
+          relevantPurchases.filter(p => p.paymentMethod === 'mercadopago').length
         ],
         backgroundColor: [
           'rgba(0, 255, 255, 0.6)',
@@ -256,10 +266,10 @@ export const Dashboard = memo(function Dashboard() {
     }
 
     const revenueData = {
-      labels: purchases.slice(-7).map(p => `${p.firstName} ${p.lastName.charAt(0)}.`),
+      labels: relevantPurchases.slice(-7).map(p => `${p.firstName} ${p.lastName.charAt(0)}.`),
       datasets: [{
-        label: 'Ingresos',
-        data: purchases.slice(-7).map(p => p.total),
+        label: selectedEventFilter === 'all' ? 'Ingresos Totales' : 'Ingresos del Evento',
+        data: relevantPurchases.slice(-7).map(p => p.total),
         borderColor: 'rgba(0, 255, 255, 1)',
         backgroundColor: 'rgba(0, 255, 255, 0.1)',
         tension: 0.4
@@ -267,7 +277,7 @@ export const Dashboard = memo(function Dashboard() {
     }
 
     return { paymentMethodData, statusData, revenueData }
-  }, [purchases, statistics])
+  }, [filteredPurchases, statistics, selectedEventFilter])
 
   if (loading) {
     return (
@@ -290,9 +300,9 @@ export const Dashboard = memo(function Dashboard() {
 
   return (
     <div className="dashboard">
-      {/* Estadísticas principales */}
-      <Row className="g-4 mb-5">
-        <Col lg={3} md={6}>
+      {/* Estadísticas principales - Responsive */}
+      <Row className="g-3 g-md-4 mb-4 mb-md-5">
+        <Col xl={3} lg={6} md={6} sm={6}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -308,14 +318,16 @@ export const Dashboard = memo(function Dashboard() {
                     <Badge bg="info" className="px-3 py-2">Total</Badge>
                   </div>
                   <h2 className="display-5 fw-bold mb-1">${statistics.totalRevenue.toLocaleString('es-AR')}</h2>
-                  <p className="mb-0 text-info">Ingresos Totales</p>
+                  <p className="mb-0 text-info">
+                    {selectedEventFilter === 'all' ? 'Ingresos Totales' : 'Ingresos del Evento'}
+                  </p>
                 </Card.Body>
               </Card>
             </Tilt>
           </motion.div>
         </Col>
 
-        <Col lg={3} md={6}>
+        <Col xl={3} lg={6} md={6} sm={6}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -331,14 +343,16 @@ export const Dashboard = memo(function Dashboard() {
                     <Badge bg="danger" className="px-3 py-2">Tickets</Badge>
                   </div>
                   <h2 className="display-5 fw-bold mb-1">{statistics.totalTickets}</h2>
-                  <p className="mb-0 text-danger">Entradas Vendidas</p>
+                  <p className="mb-0 text-danger">
+                    {selectedEventFilter === 'all' ? 'Entradas Vendidas' : 'Entradas del Evento'}
+                  </p>
                 </Card.Body>
               </Card>
             </Tilt>
           </motion.div>
         </Col>
 
-        <Col lg={3} md={6}>
+        <Col xl={3} lg={6} md={6} sm={6}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -353,15 +367,17 @@ export const Dashboard = memo(function Dashboard() {
                     <UserGroupIcon style={{ width: '40px', height: '40px', color: '#ffff00' }} />
                     <Badge bg="warning" className="px-3 py-2 text-dark">Clientes</Badge>
                   </div>
-                  <h2 className="display-5 fw-bold mb-1">{purchases.length}</h2>
-                  <p className="mb-0 text-warning">Compradores</p>
+                  <h2 className="display-5 fw-bold mb-1">{statistics.totalPurchases}</h2>
+                  <p className="mb-0 text-warning">
+                    {selectedEventFilter === 'all' ? 'Total Compradores' : 'Compradores del Evento'}
+                  </p>
                 </Card.Body>
               </Card>
             </Tilt>
           </motion.div>
         </Col>
 
-        <Col lg={3} md={6}>
+        <Col xl={3} lg={6} md={6} sm={6}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -385,9 +401,9 @@ export const Dashboard = memo(function Dashboard() {
         </Col>
       </Row>
 
-      {/* Gráficos */}
-      <Row className="g-4 mb-5">
-        <Col lg={4}>
+      {/* Gráficos - Responsive */}
+      <Row className="g-3 g-md-4 mb-4 mb-md-5">
+        <Col lg={4} md={6} sm={12}>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -407,7 +423,7 @@ export const Dashboard = memo(function Dashboard() {
           </motion.div>
         </Col>
 
-        <Col lg={4}>
+        <Col lg={4} md={6} sm={12}>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -427,7 +443,7 @@ export const Dashboard = memo(function Dashboard() {
           </motion.div>
         </Col>
 
-        <Col lg={4}>
+        <Col lg={4} md={12} sm={12}>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -460,7 +476,7 @@ export const Dashboard = memo(function Dashboard() {
       >
         <Card className="glass-card mb-5">
           <Card.Header className="bg-transparent border-bottom border-secondary">
-            <div className="d-flex justify-content-between align-items-center">
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
               <h4 className="text-white mb-0">
                 <CalendarDaysIcon style={{ width: '30px', height: '30px' }} className="me-2" />
                 Event Manager
@@ -471,9 +487,10 @@ export const Dashboard = memo(function Dashboard() {
                 style={{
                   background: 'linear-gradient(45deg, #ff006e, #8338ec)',
                   border: 'none',
-                  padding: '12px 24px',
+                  padding: '10px 20px',
                   fontWeight: 'bold',
-                  borderRadius: '10px'
+                  borderRadius: '10px',
+                  fontSize: '0.9rem'
                 }}
               >
                 <PlusIcon style={{ width: '20px', height: '20px' }} className="me-2" />
@@ -494,9 +511,9 @@ export const Dashboard = memo(function Dashboard() {
                 <p className="text-muted">¡Crea tu primer evento para empezar!</p>
               </div>
             ) : (
-              <Row className="g-4">
+              <Row className="g-3 g-md-4">
                 {events.map((event, index) => (
-                  <Col lg={4} md={6} key={event.id}>
+                  <Col xl={4} lg={6} md={6} sm={12} key={event.id}>
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -595,19 +612,93 @@ export const Dashboard = memo(function Dashboard() {
       >
         <Card className="glass-card">
           <Card.Header className="bg-transparent border-bottom border-secondary">
-            <h4 className="text-white mb-0">
-              <UserGroupIcon style={{ width: '30px', height: '30px' }} className="me-2" />
-              Lista de Compras
-            </h4>
+            <div className="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+              <div>
+                <h4 className="text-white mb-2 mb-lg-0">
+                  <UserGroupIcon style={{ width: '30px', height: '30px' }} className="me-2" />
+                  Lista de Compras
+                </h4>
+                {selectedEventFilter !== 'all' && (
+                  <Badge bg="info" className="d-block d-lg-inline ms-0 ms-lg-2 mt-2 mt-lg-0">
+                    {events.find(e => e.id === selectedEventFilter)?.name || 'Evento'}
+                  </Badge>
+                )}
+              </div>
+              <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2 gap-sm-3 w-100 w-lg-auto">
+                <Form.Select
+                  value={selectedEventFilter}
+                  onChange={(e) => setSelectedEventFilter(e.target.value)}
+                  className="bg-dark text-white border-secondary"
+                  style={{ minWidth: '200px', fontSize: '0.9rem' }}
+                >
+                  <option value="all">📊 Todas las compras</option>
+                  {events.map(event => (
+                    <option key={event.id} value={event.id}>
+                      🎉 {event.name}
+                    </option>
+                  ))}
+                </Form.Select>
+                <Badge bg="secondary" className="px-3 py-2">
+                  {statistics.totalPurchases} compras
+                </Badge>
+                <Button
+                  variant="outline-info"
+                  size="sm"
+                  onClick={() => { loadPurchases(); loadEvents(); }}
+                  className="btn-neon"
+                  disabled={loading || eventsLoading}
+                  style={{
+                    borderColor: '#00ffff',
+                    color: '#00ffff'
+                  }}
+                >
+                  {(loading || eventsLoading) ? (
+                    <Spinner size="sm" className="me-1" />
+                  ) : (
+                    '🔄'
+                  )} Actualizar
+                </Button>
+              </div>
+            </div>
           </Card.Header>
           <Card.Body>
+            {/* Info del evento seleccionado */}
+            {selectedEventFilter !== 'all' && (
+              <div className="mb-4">
+                {(() => {
+                  const selectedEvent = events.find(e => e.id === selectedEventFilter);
+                  return selectedEvent ? (
+                    <Alert variant="info" className="glass-card">
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div>
+                          <h6 className="mb-1">
+                            🎉 <strong>{selectedEvent.name}</strong>
+                          </h6>
+                          <small>
+                            📅 {selectedEvent.date} - {selectedEvent.hour} | 
+                            📍 {selectedEvent.location} | 
+                            👥 {selectedEvent.capacity} personas
+                          </small>
+                        </div>
+                        <div className="text-end">
+                          <small className="d-block">Tickets: ${selectedEvent.ticketPrice.toLocaleString('es-AR')}</small>
+                          <small className="d-block">VIP: ${selectedEvent.vipPrice.toLocaleString('es-AR')}</small>
+                        </div>
+                      </div>
+                    </Alert>
+                  ) : null;
+                })()}
+              </div>
+            )}
+
             <div className="table-responsive">
-              <Table hover variant="dark" className="align-middle">
+              <Table hover variant="dark" className="align-middle" style={{ minWidth: '800px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid rgba(0,255,255,0.3)' }}>
                     <th>#</th>
                     <th>Cliente</th>
                     <th>Contacto</th>
+                    <th>Evento</th>
                     <th>Tickets</th>
                     <th>VIP</th>
                     <th>Total</th>
@@ -617,7 +708,21 @@ export const Dashboard = memo(function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {purchases.map((purchase, index) => (
+                  {filteredPurchases.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="text-center py-4">
+                        <div className="text-muted">
+                          <UserGroupIcon style={{ width: '40px', height: '40px' }} className="mb-2" />
+                          <p className="mb-0">
+                            {selectedEventFilter === 'all' 
+                              ? 'No hay compras registradas' 
+                              : 'No hay compras para este evento'}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPurchases.map((purchase, index) => (
                     <motion.tr
                       key={purchase.id}
                       initial={{ opacity: 0, x: -20 }}
@@ -631,6 +736,15 @@ export const Dashboard = memo(function Dashboard() {
                       <td>
                         <small className="d-block">{purchase.phone}</small>
                         <small className="text-info">{purchase.email}</small>
+                      </td>
+                      <td>
+                        {purchase.eventName ? (
+                          <Badge bg="warning" className="px-2 py-1">
+                            🎉 {purchase.eventName}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted">Sin evento</span>
+                        )}
                       </td>
                       <td>
                         <Badge bg="primary" className="px-3 py-2">{purchase.ticketQty}</Badge>
@@ -687,7 +801,8 @@ export const Dashboard = memo(function Dashboard() {
                         </Button>
                       </td>
                     </motion.tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </Table>
             </div>
@@ -695,8 +810,13 @@ export const Dashboard = memo(function Dashboard() {
         </Card>
       </motion.div>
 
-      {/* Modal para crear/editar evento */}
-      <Modal show={showEventModal} onHide={() => { setShowEventModal(false); resetEventForm(); }} size="lg">
+      {/* Modal para crear/editar evento - Responsive */}
+      <Modal 
+        show={showEventModal} 
+        onHide={() => { setShowEventModal(false); resetEventForm(); }} 
+        size="lg"
+        fullscreen="sm-down"
+      >
         <Modal.Header closeButton className="bg-dark text-white">
           <Modal.Title>
             <CalendarDaysIcon style={{ width: '24px', height: '24px' }} className="me-2" />
@@ -706,7 +826,7 @@ export const Dashboard = memo(function Dashboard() {
         <Modal.Body className="bg-dark text-white">
           <Form>
             <Row className="g-3">
-              <Col md={6}>
+              <Col lg={6} md={12}>
                 <Form.Group>
                   <Form.Label>Nombre del Evento *</Form.Label>
                   <Form.Control
@@ -719,7 +839,7 @@ export const Dashboard = memo(function Dashboard() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={3}>
+              <Col lg={3} md={6} sm={6}>
                 <Form.Group>
                   <Form.Label>Fecha *</Form.Label>
                   <Form.Control
@@ -731,7 +851,7 @@ export const Dashboard = memo(function Dashboard() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={3}>
+              <Col lg={3} md={6} sm={6}>
                 <Form.Group>
                   <Form.Label>Hora *</Form.Label>
                   <Form.Control
@@ -756,7 +876,7 @@ export const Dashboard = memo(function Dashboard() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={6}>
+              <Col lg={6} md={12}>
                 <Form.Group>
                   <Form.Label>
                     <MapPinIcon style={{ width: '16px', height: '16px' }} className="me-1" />
@@ -772,7 +892,7 @@ export const Dashboard = memo(function Dashboard() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={6}>
+              <Col lg={6} md={12}>
                 <Form.Group>
                   <Form.Label>
                     <PhotoIcon style={{ width: '16px', height: '16px' }} className="me-1" />
@@ -787,7 +907,7 @@ export const Dashboard = memo(function Dashboard() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col lg={4} md={6} sm={12}>
                 <Form.Group>
                   <Form.Label>Precio Entrada General *</Form.Label>
                   <Form.Control
@@ -801,7 +921,7 @@ export const Dashboard = memo(function Dashboard() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col lg={4} md={6} sm={12}>
                 <Form.Group>
                   <Form.Label>Precio VIP/Conservadora *</Form.Label>
                   <Form.Control
@@ -815,7 +935,7 @@ export const Dashboard = memo(function Dashboard() {
                   />
                 </Form.Group>
               </Col>
-              <Col md={4}>
+              <Col lg={4} md={12} sm={12}>
                 <Form.Group>
                   <Form.Label>Capacidad Máxima *</Form.Label>
                   <Form.Control
