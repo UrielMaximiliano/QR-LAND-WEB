@@ -61,7 +61,7 @@ export class GoogleSheetsEventService {
   }
 
   // Método para crear un nuevo evento
-  async createEvent(event: Omit<Event, 'id' | 'createdAt'>): Promise<Event> {
+  async createEvent(event: Omit<Event, 'id' | 'createdAt' | 'sheetId'>): Promise<Event> {
     const newEvent: Event = {
       ...event,
       id: Date.now().toString(), // ID único basado en timestamp
@@ -86,7 +86,7 @@ export class GoogleSheetsEventService {
       })
 
       // URL real del Google Apps Script deployado
-      const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxrmRVPNRpRZ6n-MPWA4XViVZmvAblvxcycRyVRoAesGEexpwgj9pHnbHS1qgR-lBlrcg/exec';
+      const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTnTxRKqfXQVVbDBHKdWxHPddyiutpO6vS8toOtIoGDZHXHVmNKnj39ApiJH1adpKcgg/exec';
       
       await fetch(APPS_SCRIPT_URL, { 
         method: 'POST', 
@@ -94,7 +94,7 @@ export class GoogleSheetsEventService {
         mode: 'no-cors'
       })
 
-      console.log('✅ Evento creado exitosamente:', newEvent.name)
+      console.log('✅ Evento creado exitosamente (solicitado):', newEvent.name)
       // Invalidar cache después de crear
       this.cache = null
     } catch (error) {
@@ -124,7 +124,7 @@ export class GoogleSheetsEventService {
         status: event.status
       })
 
-      const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxrmRVPNRpRZ6n-MPWA4XViVZmvAblvxcycRyVRoAesGEexpwgj9pHnbHS1qgR-lBlrcg/exec';
+      const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTnTxRKqfXQVVbDBHKdWxHPddyiutpO6vS8toOtIoGDZHXHVmNKnj39ApiJH1adpKcgg/exec';
       
       await fetch(APPS_SCRIPT_URL, { 
         method: 'POST', 
@@ -149,7 +149,7 @@ export class GoogleSheetsEventService {
         id: id
       })
 
-      const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxrmRVPNRpRZ6n-MPWA4XViVZmvAblvxcycRyVRoAesGEexpwgj9pHnbHS1qgR-lBlrcg/exec';
+      const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTnTxRKqfXQVVbDBHKdWxHPddyiutpO6vS8toOtIoGDZHXHVmNKnj39ApiJH1adpKcgg/exec';
       
       await fetch(APPS_SCRIPT_URL, { 
         method: 'POST', 
@@ -173,7 +173,7 @@ export class GoogleSheetsEventService {
     // Saltar encabezados (primera fila)
     for (let i = 1; i < rows.length; i++) {
       const cols = rows[i]
-      if (cols.length >= 12 && cols[1]?.trim()) {
+      if (cols.length >= 13 && cols[1]?.trim()) {
         events.push({
           id: cols[0] || `${i}-${Date.now()}`,
           name: cols[1] || '',
@@ -187,7 +187,8 @@ export class GoogleSheetsEventService {
           capacity: parseInt(cols[9]) || 0,
           createdBy: cols[10] || '',
           createdAt: cols[11] || '',
-          status: (cols[12] as 'active' | 'inactive') || 'active'
+          status: (cols[12] as 'active' | 'inactive') || 'active',
+          sheetId: cols[13] || ''
         })
       }
     }

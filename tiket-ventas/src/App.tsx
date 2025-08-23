@@ -8,23 +8,13 @@ import Tilt from 'react-parallax-tilt'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
-import { 
-  SparklesIcon, 
-  UserIcon,
-  ShoppingCartIcon,
-  StarIcon,
-  FireIcon,
-  MusicalNoteIcon,
-  CalendarDaysIcon,
-  MapPinIcon
-} from '@heroicons/react/24/solid'
 
 import { GoogleSheetsEventService, type EventData } from './services/EventService';
 
 gsap.registerPlugin(ScrollTrigger)
 
 // URL del Google Apps Script
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxB9fgzC8d2Km8G0vr3zEl-1pBEOwnp5H09ZjRt32fJyrvoL3uzCC9kTilRxAUhY-CWw/exec'
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTnTxRKqfXQVVbDBHKdWxHPddyiutpO6vS8toOtIoGDZHXHVmNKnj39ApiJH1adpKcgg/exec'
 
 // Imágenes de fiestas (usando URLs de Unsplash)
 const partyImages = [
@@ -33,6 +23,16 @@ const partyImages = [
   'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3',
   'https://images.unsplash.com/photo-1470225620780-dba8ba36b745',
   'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec'
+]
+
+// Logos de partners (ejemplos sin links)
+const partnerLogos = [
+  'https://dummyimage.com/200x60/ff006e/ffffff&text=LOGO+1',
+  'https://dummyimage.com/200x60/8338ec/ffffff&text=LOGO+2',
+  'https://dummyimage.com/200x60/fb5607/ffffff&text=LOGO+3',
+  'https://dummyimage.com/200x60/ffbe0b/000000&text=LOGO+4',
+  'https://dummyimage.com/200x60/3a86ff/ffffff&text=LOGO+5',
+  'https://dummyimage.com/200x60/00ffff/000000&text=LOGO+6'
 ]
 
 // Componente principal memoizado para máximo rendimiento
@@ -49,13 +49,13 @@ const App = memo(function App() {
   // Función para obtener form data de un evento específico
   const getEventFormData = (eventId: string) => {
     return eventForms[eventId] || {
-      firstName: '',
-      lastName: '',
-      phone: '',
-      email: '',
-      ticketQty: 1,
-      coolerQty: 0,
-      paymentMethod: 'efectivo'
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    ticketQty: 1,
+    coolerQty: 0,
+    paymentMethod: 'efectivo'
     };
   }
 
@@ -85,7 +85,11 @@ const App = memo(function App() {
       try {
         const service = new GoogleSheetsEventService();
         const eventsData = await service.getAllEvents();
-        setEvents(eventsData);
+        // Ordenar por fecha ascendente
+        const sortedEvents = eventsData.sort((a, b) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        setEvents(sortedEvents);
       } catch (error) {
         console.error('Error cargando eventos:', error);
         if (retries > 0) {
@@ -166,27 +170,28 @@ const App = memo(function App() {
     const eventFormData = getEventFormData(eventId);
     const total = calculateTotal(eventId);
 
-      const params = new URLSearchParams({
-        firstName: eventFormData.firstName,
-        lastName: eventFormData.lastName,
-        phone: eventFormData.phone,
-        email: eventFormData.email,
-        ticketQty: eventFormData.ticketQty.toString(),
-        coolerQty: eventFormData.coolerQty.toString(),
-        paymentMethod: eventFormData.paymentMethod,
-        total: total.toString(),
-        status: 'pendiente',
-        eventId: eventId,
-        eventName: event?.name || 'Sin evento'
-      })
+      const params = {
+        action: 'savePurchase',
+        sheetId: event?.sheetId || '',
+        purchase: {
+          firstName: eventFormData.firstName,
+          lastName: eventFormData.lastName,
+          phone: eventFormData.phone,
+          email: eventFormData.email,
+          ticketQty: eventFormData.ticketQty,
+          coolerQty: eventFormData.coolerQty,
+          paymentMethod: eventFormData.paymentMethod,
+          total: total,
+          status: 'pendiente',
+          eventId: eventId,
+          eventName: event?.name || 'Sin evento'
+        }
+      }
 
       await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params.toString()
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
       })
 
       console.log('Datos guardados en Google Sheets')
@@ -249,13 +254,13 @@ const App = memo(function App() {
         setEventForms(prev => ({
           ...prev,
           [eventId]: {
-            firstName: '',
-            lastName: '',
-            phone: '',
-            email: '',
-            ticketQty: 1,
-            coolerQty: 0,
-            paymentMethod: 'efectivo'
+          firstName: '',
+          lastName: '',
+          phone: '',
+          email: '',
+          ticketQty: 1,
+          coolerQty: 0,
+          paymentMethod: 'efectivo'
           }
         }));
         setExpandedEventId(''); // Cerrar el formulario
@@ -315,38 +320,51 @@ const App = memo(function App() {
                 transition={{ duration: 1 }}
               >
                 <h1 className="hero-title display-2 display-md-1 fw-bold text-white mb-3 mb-md-4" style={{
-                  textShadow: '0 0 30px rgba(255,0,110,0.5), 0 0 60px rgba(138,56,236,0.3)',
+                  textShadow: '0 0 10px rgba(131,56,236,0.8), 0 0 20px rgba(131,56,236,0.6), 0 0 30px rgba(131,56,236,0.4), 0 0 40px rgba(131,56,236,0.2)',
                   fontFamily: "'Bebas Neue', sans-serif",
-                  letterSpacing: '3px',
-                  fontSize: 'clamp(2.5rem, 8vw, 5rem)'
+                  letterSpacing: '5px',
+                  fontSize: 'clamp(2.5rem, 8vw, 5rem)',
+                  color: '#ffffff',
+                  textTransform: 'uppercase'
                 }}>
-                  <FireIcon className="d-inline-block me-2 me-md-3" style={{ width: 'clamp(40px, 10vw, 80px)', height: 'clamp(40px, 10vw, 80px)' }} />
-                  TIKET NOW
-                  <FireIcon className="d-inline-block ms-2 ms-md-3" style={{ width: 'clamp(40px, 10vw, 80px)', height: 'clamp(40px, 10vw, 80px)' }} />
+                  TICKETEANDO
                 </h1>
                 
                 <h2 className="hero-subtitle h4 h-md-3 text-warning mb-4 mb-md-5" style={{
                   fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
-                  fontSize: 'clamp(1.2rem, 4vw, 1.75rem)'
+                  fontWeight: 600, // Más llamativo
+                  fontSize: 'clamp(1.2rem, 4vw, 1.75rem)',
+                  color: '#ffbe0b' // Sincronizado accent yellow
                 }}>
                   Elige tu Evento Favorito
                 </h2>
 
                 <div className="d-flex justify-content-center gap-2 gap-md-3 flex-wrap mb-4 mb-md-5">
-                  <Badge className="hero-badge p-3 bg-gradient" style={{ background: 'linear-gradient(45deg, #ff006e, #8338ec)' }}>
-                    <MusicalNoteIcon style={{ width: '20px', height: '20px' }} className="me-2" />
+                  <Badge className="hero-badge p-2 p-md-3 bg-gradient" style={{ 
+                    background: 'linear-gradient(45deg, rgba(255,0,110,0.8), rgba(131,56,236,0.8))', // Translúcido con opacidad
+                    fontFamily: "'Montserrat', sans-serif", 
+                    fontWeight: 'bold',
+                    opacity: 0.9 // Buen translúcido
+                  }}>
                     Múltiples Eventos
                   </Badge>
-                  <Badge className="hero-badge p-3 bg-gradient" style={{ background: 'linear-gradient(45deg, #fb5607, #ffbe0b)' }}>
-                    <StarIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                    Precios Dinámicos
+                  <Badge className="hero-badge p-2 p-md-3 bg-gradient" style={{ 
+                    background: 'linear-gradient(45deg, rgba(251,86,7,0.8), rgba(255,190,11,0.8))', 
+                    fontFamily: "'Montserrat', sans-serif", 
+                    fontWeight: 'bold',
+                    opacity: 0.9
+                  }}>
+                    QR Seguro
                   </Badge>
-                  <Badge className="hero-badge p-3 bg-gradient" style={{ background: 'linear-gradient(45deg, #3a86ff, #8338ec)' }}>
-                    <SparklesIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                    Experiencias Únicas
+                  <Badge className="hero-badge p-2 p-md-3 bg-gradient" style={{ 
+                    background: 'linear-gradient(45deg, rgba(255,190,11,0.8), rgba(251,86,7,0.8))', 
+                    fontFamily: "'Montserrat', sans-serif", 
+                    fontWeight: 'bold',
+                    opacity: 0.9
+                  }}>
+                    Pagos Seguros
                   </Badge>
-                </div>
+      </div>
               </motion.div>
             </Col>
           </Row>
@@ -356,14 +374,18 @@ const App = memo(function App() {
       {/* Eventos Disponibles - Responsive */}
       <section className="events-section py-4 py-md-5 mb-4 mb-md-5">
         <Container>
-          <h2 className="text-center text-white mb-4 mb-md-5" style={{ fontSize: 'clamp(1.8rem, 5vw, 2.5rem)' }}>
+          <h2 className="text-center text-white mb-4 mb-md-5" style={{ 
+            fontSize: 'clamp(1.8rem, 5vw, 2.5rem)',
+            fontFamily: "'Montserrat', sans-serif", // Cambiado a Montserrat para consistencia
+            color: 'rgba(255,255,255,0.9)', // Translúcido
+            letterSpacing: '2px'
+          }}>
             Eventos Disponibles
           </h2>
           {events.length === 0 ? (
             <div className="text-center py-5">
-              <CalendarDaysIcon style={{ width: '80px', height: '80px', color: '#666' }} className="mb-4" />
-              <h3 className="text-white mb-3">No hay eventos disponibles</h3>
-              <p className="text-muted">Los eventos creados por los administradores aparecerán aquí.</p>
+              <h3 className="text-white mb-3" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>No hay eventos disponibles</h3>
+              <p className="text-muted" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.8)' }}>Los eventos creados por los administradores aparecerán aquí.</p>
             </div>
           ) : (
             <Row className="g-3 g-md-4">
@@ -373,68 +395,81 @@ const App = memo(function App() {
                     <Card 
                       className="h-100 bg-dark text-white border-0" 
                       style={{
-                        background: 'linear-gradient(135deg, rgba(255,0,110,0.1), rgba(138,56,236,0.1))',
-                        backdropFilter: 'blur(10px)',
-                        boxShadow: '0 8px 32px rgba(255,0,110,0.3)',
+                        background: 'linear-gradient(135deg, rgba(255,0,110,0.1), rgba(138,56,236,0.1))', // Sincronizado primary pink to secondary purple
+                  backdropFilter: 'blur(10px)',
+                        boxShadow: '0 8px 32px rgba(255,0,110,0.3)', // Primary pink shadow
                         borderRadius: '15px',
                         transition: 'all 0.3s ease'
                       }}
                     >
                       {event.image && (
-                        <Card.Img 
-                          variant="top" 
-                          src={event.image} 
-                          loading="lazy"
-                          alt={`Imagen de ${event.name}`}
-                          style={{ 
-                            height: 'clamp(150px, 25vw, 200px)', 
-                            objectFit: 'cover', 
-                            borderRadius: '15px 15px 0 0',
-                            transition: 'transform 0.3s ease'
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.5, ease: 'easeOut' }}
+                          style={{
+                            overflow: 'hidden',
+                            borderRadius: '15px 15px 0 0'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                        />
+                        >
+                          <Card.Img 
+                            variant="top" 
+                            src={event.image} 
+                            loading="lazy"
+                            alt={`Imagen de ${event.name}`}
+                            style={{ 
+                              height: 'clamp(150px, 25vw, 200px)', 
+                              objectFit: 'cover', 
+                              transition: 'transform 0.5s ease-in-out'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                          />
+                        </motion.div>
                       )}
                       <Card.Body className="p-3 p-md-4">
                         <Card.Title className="mb-3" style={{ 
                           fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', 
-                          fontWeight: 'bold' 
+                          fontWeight: 'bold',
+                          fontFamily: "'Montserrat', sans-serif", // Sincronizado
+                          color: 'rgba(255,255,255,0.9)' // Translúcido
                         }}>
                           {event.name}
                         </Card.Title>
                         
                         <div className="mb-3">
-                          <Card.Text className="mb-1">
-                            <CalendarDaysIcon style={{ width: '16px', height: '16px' }} className="me-2" />
+                          <Card.Text className="mb-1" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
                             <strong>{event.date} - {event.hour}</strong>
                           </Card.Text>
-                          <Card.Text className="mb-2">
-                            <MapPinIcon style={{ width: '16px', height: '16px' }} className="me-2" />
+                          <Card.Text className="mb-2" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
                             {event.location}
                           </Card.Text>
                         </div>
 
-                        <Card.Text className="text-muted mb-3" style={{ fontSize: '0.9rem' }}>
+                        <Card.Text className="text-muted mb-3" style={{ 
+                          fontSize: '0.9rem',
+                          fontFamily: "'Montserrat', sans-serif",
+                          color: 'rgba(255,255,255,0.8)' // Ya translúcido
+                        }}>
                           {event.description}
                         </Card.Text>
 
                         <div className="row g-2 mb-3">
                           <div className="col-6">
-                            <div className="text-center p-2 bg-dark rounded">
-                              <small className="text-muted d-block">Entrada General</small>
-                              <strong className="text-info">${event.ticketPrice.toLocaleString('es-AR')}</strong>
+                            <div className="text-center p-2 bg-dark rounded" style={{ border: '1px solid #8338ec' }}>
+                              <small className="text-muted d-block" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.8)' }}>Entrada General</small>
+                              <strong className="text-warning" style={{ color: 'rgba(255,190,11,0.9)' }}>${event.ticketPrice.toLocaleString('es-AR')}</strong>
                             </div>
                           </div>
                           <div className="col-6">
-                            <div className="text-center p-2 bg-dark rounded">
-                              <small className="text-muted d-block">VIP</small>
-                              <strong className="text-warning">${event.vipPrice.toLocaleString('es-AR')}</strong>
+                            <div className="text-center p-2 bg-dark rounded" style={{ border: '1px solid #ffbe0b' }}>
+                              <small className="text-muted d-block" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.8)' }}>VIP</small>
+                              <strong className="text-warning" style={{ color: 'rgba(255,190,11,0.9)' }}>${event.vipPrice.toLocaleString('es-AR')}</strong>
                             </div>
                           </div>
                         </div>
 
-                        <div className="text-center mb-3">
+                        <div className="text-center mb-3" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>
                           <small className="text-muted">Capacidad: </small>
                           <strong>{event.capacity} personas</strong>
                         </div>
@@ -446,14 +481,14 @@ const App = memo(function App() {
                             onClick={() => setExpandedEventId(expandedEventId === event.id ? '' : event.id)}
                             style={{
                               background: expandedEventId === event.id 
-                                ? 'linear-gradient(45deg, #28a745, #20c997)' 
-                                : 'linear-gradient(45deg, #ff006e, #8338ec)',
+                                ? 'linear-gradient(45deg, #00ff00, #00ffff)'  // Green to cyan for close
+                                : 'linear-gradient(45deg, #ff006e, #8338ec)', // Primary to secondary
                               border: 'none',
                               fontWeight: 'bold',
-                              borderRadius: '10px'
+                              borderRadius: '10px',
+                              fontFamily: "'Montserrat', sans-serif"
                             }}
                           >
-                            <ShoppingCartIcon style={{ width: '20px', height: '20px' }} className="me-2" />
                             {expandedEventId === event.id ? 'Cerrar Formulario' : 'Comprar Tickets'}
                           </Button>
                         </div>
@@ -461,7 +496,7 @@ const App = memo(function App() {
                         {/* Formulario expandible */}
                         <AnimatePresence>
                           {expandedEventId === event.id && (
-                            <motion.div
+              <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
                               exit={{ opacity: 0, height: 0 }}
@@ -469,154 +504,177 @@ const App = memo(function App() {
                               style={{ overflow: 'hidden' }}
                             >
                               <div className="border-top border-secondary pt-4 mt-3">
-                                <h6 className="text-center mb-3">
-                                  <UserIcon style={{ width: '20px', height: '20px' }} className="me-2" />
+                                <h6 className="text-center mb-3" style={{
+                        fontFamily: "'Montserrat', sans-serif", // Sincronizado
+                                  color: 'rgba(255,255,255,0.9)',
+                                  fontSize: '1.2rem'
+                      }}>
                                   Datos del Comprador
                                 </h6>
-                                
+
                                                                  <Row className="g-2 g-md-3">
                                    <Col lg={6} md={12} sm={12}>
-                                    <Form.Group>
-                                      <Form.Label>Nombre</Form.Label>
-                                      <Form.Control
-                                        type="text"
+                            <Form.Group>
+                                      <Form.Label style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>Nombre</Form.Label>
+                              <Form.Control
+                                type="text"
                                         value={getEventFormData(event.id).firstName}
                                         onChange={(e) => handleEventInputChange(event.id, 'firstName', e.target.value)}
-                                        required
-                                        className="bg-dark text-white border-secondary"
+                                required
+                                className="bg-dark text-white border-secondary"
                                         placeholder="Tu nombre"
-                                      />
-                                    </Form.Group>
-                                  </Col>
+                              />
+                            </Form.Group>
+                          </Col>
                                                                      <Col lg={6} md={12} sm={12}>
-                                     <Form.Group>
-                                       <Form.Label>Apellido</Form.Label>
-                                      <Form.Control
-                                        type="text"
+                            <Form.Group>
+                                       <Form.Label style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>Apellido</Form.Label>
+                              <Form.Control
+                                type="text"
                                         value={getEventFormData(event.id).lastName}
                                         onChange={(e) => handleEventInputChange(event.id, 'lastName', e.target.value)}
-                                        required
-                                        className="bg-dark text-white border-secondary"
+                                required
+                                className="bg-dark text-white border-secondary"
                                         placeholder="Tu apellido"
-                                      />
-                                    </Form.Group>
-                                  </Col>
+                              />
+                            </Form.Group>
+                          </Col>
                                                                      <Col lg={6} md={12} sm={12}>
-                                     <Form.Group>
-                                       <Form.Label>Teléfono</Form.Label>
-                                      <Form.Control
-                                        type="tel"
+                            <Form.Group>
+                                       <Form.Label style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>Teléfono</Form.Label>
+                              <Form.Control
+                                type="tel"
                                         value={getEventFormData(event.id).phone}
                                         onChange={(e) => handleEventInputChange(event.id, 'phone', e.target.value)}
-                                        required
-                                        className="bg-dark text-white border-secondary"
+                                required
+                                className="bg-dark text-white border-secondary"
                                         placeholder="Tu teléfono"
-                                      />
-                                    </Form.Group>
-                                  </Col>
+                              />
+                            </Form.Group>
+                          </Col>
                                                                      <Col lg={6} md={12} sm={12}>
-                                     <Form.Group>
-                                       <Form.Label>Email</Form.Label>
-                                      <Form.Control
-                                        type="email"
+                            <Form.Group>
+                                       <Form.Label style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>Email</Form.Label>
+                              <Form.Control
+                                type="email"
                                         value={getEventFormData(event.id).email}
                                         onChange={(e) => handleEventInputChange(event.id, 'email', e.target.value)}
-                                        required
-                                        className="bg-dark text-white border-secondary"
+                                required
+                                className="bg-dark text-white border-secondary"
                                         placeholder="tu@email.com"
-                                      />
-                                    </Form.Group>
-                                  </Col>
+                              />
+                            </Form.Group>
+                          </Col>
                                                                      <Col lg={4} md={6} sm={12}>
-                                     <Form.Group>
-                                       <Form.Label>Entradas</Form.Label>
-                                      <Form.Control
-                                        type="number"
+                            <Form.Group>
+                                       <Form.Label style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>Entradas</Form.Label>
+                              <Form.Control
+                                type="number"
                                         value={getEventFormData(event.id).ticketQty}
                                         onChange={(e) => handleEventInputChange(event.id, 'ticketQty', e.target.value)}
-                                        min="1"
-                                        required
-                                        className="bg-dark text-white border-secondary"
-                                      />
-                                    </Form.Group>
-                                  </Col>
+                                min="1"
+                                required
+                                className="bg-dark text-white border-secondary"
+                              />
+                            </Form.Group>
+                          </Col>
                                                                      <Col lg={4} md={6} sm={12}>
-                                     <Form.Group>
-                                       <Form.Label>VIP</Form.Label>
-                                      <Form.Control
-                                        type="number"
+                            <Form.Group>
+                                       <Form.Label style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>VIP</Form.Label>
+                              <Form.Control
+                                type="number"
                                         value={getEventFormData(event.id).coolerQty}
                                         onChange={(e) => handleEventInputChange(event.id, 'coolerQty', e.target.value)}
-                                        min="0"
-                                        className="bg-dark text-white border-secondary"
-                                      />
-                                    </Form.Group>
-                                  </Col>
+                                min="0"
+                                className="bg-dark text-white border-secondary"
+                              />
+                            </Form.Group>
+                          </Col>
                                                                      <Col lg={4} md={12} sm={12}>
-                                     <Form.Group>
-                                       <Form.Label>Pago</Form.Label>
-                                      <Form.Select
+                            <Form.Group>
+                                       <Form.Label style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>Pago</Form.Label>
+                              <Form.Select
                                         value={getEventFormData(event.id).paymentMethod}
                                         onChange={(e) => handleEventInputChange(event.id, 'paymentMethod', e.target.value)}
-                                        className="bg-dark text-white border-secondary"
-                                      >
-                                        <option value="efectivo">Efectivo</option>
-                                        <option value="transferencia">Transferencia</option>
-                                        <option value="mercadopago">MercadoPago</option>
-                                      </Form.Select>
-                                    </Form.Group>
-                                  </Col>
-                                </Row>
+                                className="bg-dark text-white border-secondary"
+                              >
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="mercadopago">MercadoPago</option>
+                              </Form.Select>
+                            </Form.Group>
+                          </Col>
+                        </Row>
 
                                 {/* Total */}
                                 <div className="text-center my-4 p-3 rounded" style={{
-                                  background: 'linear-gradient(135deg, rgba(255,0,110,0.1), rgba(138,56,236,0.1))',
-                                  border: '2px solid rgba(255,0,110,0.5)'
+                                  background: 'linear-gradient(135deg, rgba(255,0,110,0.1), rgba(138,56,236,0.1))', // Sincronizado
+                                  border: '2px solid rgba(255,0,110,0.5)' // Primary pink
                                 }}>
-                                  <h5 className="text-white mb-0">TOTAL A PAGAR</h5>
-                                  <h3 className="text-warning mb-0">${calculateTotal(event.id).toLocaleString('es-AR')}</h3>
+                                  <h5 className="text-white mb-0" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>TOTAL A PAGAR</h5>
+                                  <h3 className="text-warning mb-0" style={{ color: 'rgba(255,190,11,0.9)', fontFamily: "'Montserrat', sans-serif" }}>${calculateTotal(event.id).toLocaleString('es-AR')}</h3>
                                 </div>
 
                                 {/* Botón de compra */}
-                                <div className="d-grid">
-                                  <Button
+                        <div className="d-grid">
+                          <Button
                                     id={`submit-button-${event.id}`}
                                     onClick={() => handleEventSubmit(event.id)}
                                     disabled={loading}
-                                    size="lg"
-                                    style={{
-                                      background: loading 
-                                        ? 'linear-gradient(45deg, #666, #999)' 
-                                        : 'linear-gradient(45deg, #ff006e, #8338ec)',
-                                      border: 'none',
-                                      fontWeight: 'bold',
-                                      borderRadius: '10px'
-                                    }}
-                                  >
-                                    {loading ? (
-                                      <>
+                            size="lg"
+                            style={{
+                              background: loading 
+                                ? 'linear-gradient(45deg, #666, #999)' 
+                                        : 'linear-gradient(45deg, #ff006e, #8338ec)', // Sincronizado primary to secondary
+                              border: 'none',
+                              fontWeight: 'bold',
+                                      borderRadius: '10px',
+                                      fontFamily: "'Montserrat', sans-serif"
+                            }}
+                          >
+                            {loading ? (
+                              <>
                                         <Spinner size="sm" className="me-2" />
-                                        Procesando...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <ShoppingCartIcon style={{ width: '20px', height: '20px' }} className="me-2" />
-                                        FINALIZAR COMPRA
-                                      </>
-                                    )}
-                                  </Button>
-                                </div>
+                                Procesando...
+                              </>
+                            ) : (
+                                      'FINALIZAR COMPRA'
+                            )}
+                          </Button>
+                        </div>
                               </div>
                             </motion.div>
                           )}
                         </AnimatePresence>
-                      </Card.Body>
-                    </Card>
+                    </Card.Body>
+                </Card>
                   </Tilt>
-                </Col>
+            </Col>
               ))}
-            </Row>
+          </Row>
           )}
+        </Container>
+      </section>
+
+      {/* Partners Section */}
+      <section className="partners-section py-5">
+        <Container>
+          <h3 className="text-center text-white mb-4" style={{ fontFamily: "'Montserrat', sans-serif", letterSpacing: '2px' }}>Partners</h3>
+          <Row className="g-4 justify-content-center">
+            {partnerLogos.map((src, i) => (
+              <Col xs={6} md={4} lg={2} key={i}>
+                <div className="text-center p-3" style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '12px'
+                }}>
+                  <img src={src} alt={`Partner ${i+1}`} loading="lazy" style={{
+                    width: '100%', height: '50px', objectFit: 'contain', filter: 'grayscale(10%)', opacity: 0.9
+                  }} />
+                </div>
+              </Col>
+            ))}
+          </Row>
         </Container>
       </section>
 
@@ -746,6 +804,11 @@ const App = memo(function App() {
             font-size: 1.1rem !important;
           }
         }
+      `}</style>
+      {/* Elevar contenido principal */}
+      <style>{`
+      .events-section { margin-top: -1rem; }
+      .partners-section { background: rgba(0,0,0,0.6); border-top: 1px solid rgba(255,255,255,0.08); }
       `}</style>
     </div>
   )

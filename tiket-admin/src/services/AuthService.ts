@@ -9,7 +9,7 @@ const STORAGE_KEY = 'tiket-admin-session'
 // Usuarios hardcodeados (en producción vendría de una base de datos)
 const USERS: Record<string, { password: string; role: User['role'] }> = {
   'admin': { password: 'admin123', role: 'admin' },
-  'super': { password: 'super123', role: 'super-admin' }
+  'super': { password: 'super123', role: 'admin' }
 }
 
 export class LocalStorageAuthService implements AuthService {

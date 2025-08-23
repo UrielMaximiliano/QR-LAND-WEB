@@ -17,18 +17,31 @@ import {
   ChartBarIcon,
   ArrowTrendingUpIcon,
   SparklesIcon,
-  QrCodeIcon,
-  CheckCircleIcon,
-  XCircleIcon,
   CalendarDaysIcon,
   MapPinIcon,
   PhotoIcon,
   PlusIcon
 } from '@heroicons/react/24/solid'
+import { useAuth } from '../contexts/AuthContext'
 
 
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, LineElement, PointElement)
+
+// Plugin para fondo oscuro en áreas de gráficos
+const darkChartBackgroundPlugin = {
+  id: 'darkBackground',
+  beforeDraw: (chart: any, _args: any, options: any) => {
+    const { ctx, chartArea } = chart
+    if (!chartArea) return
+    const { left, top, width, height } = chartArea
+    ctx.save()
+    ctx.fillStyle = (options && options.color) || 'rgba(20,20,20,0.85)'
+    ctx.fillRect(left, top, width, height)
+    ctx.restore()
+  }
+}
+ChartJS.register(darkChartBackgroundPlugin as any)
 
 // Componente memoizado para evitar re-renders innecesarios
 export const Dashboard = memo(function Dashboard() {
@@ -36,6 +49,7 @@ export const Dashboard = memo(function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sendingQR, setSendingQR] = useState<number | null>(null)
+  const { user } = useAuth()
   
   // Estados para Event Manager
   const [events, setEvents] = useState<Event[]>([])
@@ -109,27 +123,30 @@ export const Dashboard = memo(function Dashboard() {
     try {
       setEventsLoading(true)
       const data = await eventService.getAllEvents()
-      setEvents(data)
+      // Siempre scoping por owner
+      const scoped = user ? data.filter(e => e.createdBy === user.username) : []
+      setEvents(scoped)
     } catch (err) {
       console.error('Error cargando eventos:', err)
       setError('Error cargando eventos. Verifica la conexión.')
     } finally {
       setEventsLoading(false)
     }
-  }, [eventService])
+  }, [eventService, user])
 
   const handleCreateEvent = useCallback(async () => {
     try {
-      const created = await eventService.createEvent(newEvent)
+      const createdPayload = { ...newEvent, createdBy: user?.username ?? 'admin' }
+      const created = await eventService.createEvent(createdPayload as any)
       setEvents(prev => [created, ...prev])
       setShowEventModal(false)
       resetEventForm()
-      setError(null) // Limpiar errores anteriores
+      setError(null)
     } catch (err) {
       console.error('Error creando evento:', err)
       setError('Error creando evento. Inténtalo de nuevo.')
     }
-  }, [eventService, newEvent, events])
+  }, [eventService, newEvent, user])
 
   const handleUpdateEvent = useCallback(async () => {
     if (!eventToEdit) return
@@ -197,11 +214,21 @@ export const Dashboard = memo(function Dashboard() {
 
 
 
+  // Base de compras según scope del usuario
+  const scopedPurchases = useMemo(() => {
+    if (user) {
+      const myEventIds = new Set(events.filter(e => e.createdBy === user.username).map(e => e.id))
+      return purchases.filter(p => p.eventId && myEventIds.has(p.eventId))
+    }
+    return []
+  }, [purchases, events, user])
+
   // Filtrar compras por evento seleccionado
   const filteredPurchases = useMemo(() => {
-    if (selectedEventFilter === 'all') return purchases;
-    return purchases.filter(p => p.eventId === selectedEventFilter);
-  }, [purchases, selectedEventFilter]);
+    const base = scopedPurchases
+    if (selectedEventFilter === 'all') return base;
+    return base.filter(p => p.eventId === selectedEventFilter);
+  }, [scopedPurchases, selectedEventFilter]);
 
   // Cálculos para estadísticas - Memoizados y filtrados por evento
   const statistics = useMemo(() => {
@@ -310,15 +337,15 @@ export const Dashboard = memo(function Dashboard() {
           >
             <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10}>
               <Card className="glass-card text-white h-100 pulse-neon" style={{
-                background: 'linear-gradient(135deg, rgba(0,255,255,0.1), rgba(0,100,255,0.1))'
+                background: 'linear-gradient(135deg, rgba(255,0,110,0.10), rgba(131,56,236,0.10))'
               }}>
                 <Card.Body className="p-4">
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    <CurrencyDollarIcon style={{ width: '40px', height: '40px', color: '#00ffff' }} />
-                    <Badge bg="info" className="px-3 py-2">Total</Badge>
+                    <CurrencyDollarIcon style={{ width: '40px', height: '40px', color: '#ffbe0b' }} />
+                    <Badge bg="warning" className="px-3 py-2 text-dark" style={{ opacity: 0.9, fontFamily: "'Montserrat', sans-serif" }}>Total</Badge>
                   </div>
-                  <h2 className="display-5 fw-bold mb-1">${statistics.totalRevenue.toLocaleString('es-AR')}</h2>
-                  <p className="mb-0 text-info">
+                  <h2 className="display-5 fw-bold mb-1" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>${statistics.totalRevenue.toLocaleString('es-AR')}</h2>
+                  <p className="mb-0" style={{ color: '#ffbe0b', fontFamily: "'Montserrat', sans-serif" }}>
                     {selectedEventFilter === 'all' ? 'Ingresos Totales' : 'Ingresos del Evento'}
                   </p>
                 </Card.Body>
@@ -335,15 +362,15 @@ export const Dashboard = memo(function Dashboard() {
           >
             <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10}>
               <Card className="glass-card text-white h-100" style={{
-                background: 'linear-gradient(135deg, rgba(255,0,255,0.1), rgba(255,0,100,0.1))'
+                background: 'linear-gradient(135deg, rgba(255,0,255,0.10), rgba(255,0,100,0.10))'
               }}>
                 <Card.Body className="p-4">
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    <TicketIcon style={{ width: '40px', height: '40px', color: '#ff00ff' }} />
-                    <Badge bg="danger" className="px-3 py-2">Tickets</Badge>
+                    <TicketIcon style={{ width: '40px', height: '40px', color: '#8338ec' }} />
+                    <Badge bg="secondary" className="px-3 py-2" style={{ opacity: 0.9, fontFamily: "'Montserrat', sans-serif" }}>Tickets</Badge>
                   </div>
-                  <h2 className="display-5 fw-bold mb-1">{statistics.totalTickets}</h2>
-                  <p className="mb-0 text-danger">
+                  <h2 className="display-5 fw-bold mb-1" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>{statistics.totalTickets}</h2>
+                  <p className="mb-0" style={{ color: '#8338ec', fontFamily: "'Montserrat', sans-serif" }}>
                     {selectedEventFilter === 'all' ? 'Entradas Vendidas' : 'Entradas del Evento'}
                   </p>
                 </Card.Body>
@@ -360,15 +387,15 @@ export const Dashboard = memo(function Dashboard() {
           >
             <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10}>
               <Card className="glass-card text-white h-100" style={{
-                background: 'linear-gradient(135deg, rgba(255,255,0,0.1), rgba(255,150,0,0.1))'
+                background: 'linear-gradient(135deg, rgba(255,190,11,0.10), rgba(251,86,7,0.10))'
               }}>
                 <Card.Body className="p-4">
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    <UserGroupIcon style={{ width: '40px', height: '40px', color: '#ffff00' }} />
-                    <Badge bg="warning" className="px-3 py-2 text-dark">Clientes</Badge>
+                    <UserGroupIcon style={{ width: '40px', height: '40px', color: '#ffbe0b' }} />
+                    <Badge bg="warning" className="px-3 py-2 text-dark" style={{ opacity: 0.9, fontFamily: "'Montserrat', sans-serif" }}>Clientes</Badge>
                   </div>
-                  <h2 className="display-5 fw-bold mb-1">{statistics.totalPurchases}</h2>
-                  <p className="mb-0 text-warning">
+                  <h2 className="display-5 fw-bold mb-1" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>{statistics.totalPurchases}</h2>
+                  <p className="mb-0" style={{ color: '#ffbe0b', fontFamily: "'Montserrat', sans-serif" }}>
                     {selectedEventFilter === 'all' ? 'Total Compradores' : 'Compradores del Evento'}
                   </p>
                 </Card.Body>
@@ -385,15 +412,15 @@ export const Dashboard = memo(function Dashboard() {
           >
             <Tilt tiltMaxAngleX={10} tiltMaxAngleY={10}>
               <Card className="glass-card text-white h-100" style={{
-                background: 'linear-gradient(135deg, rgba(0,255,0,0.1), rgba(0,150,100,0.1))'
+                background: 'linear-gradient(135deg, rgba(0,255,0,0.08), rgba(0,150,100,0.08))'
               }}>
                 <Card.Body className="p-4">
                   <div className="d-flex justify-content-between align-items-center mb-3">
-                    <SparklesIcon style={{ width: '40px', height: '40px', color: '#00ff00' }} />
-                    <Badge bg="success" className="px-3 py-2">VIP</Badge>
+                    <SparklesIcon style={{ width: '40px', height: '40px', color: '#00ff88' }} />
+                    <Badge bg="success" className="px-3 py-2" style={{ opacity: 0.9, fontFamily: "'Montserrat', sans-serif" }}>VIP</Badge>
                   </div>
-                  <h2 className="display-5 fw-bold mb-1">{statistics.totalCoolers}</h2>
-                  <p className="mb-0 text-success">Conservadoras</p>
+                  <h2 className="display-5 fw-bold mb-1" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.9)' }}>{statistics.totalCoolers}</h2>
+                  <p className="mb-0" style={{ color: '#00ffaa', fontFamily: "'Montserrat', sans-serif" }}>Conservadoras</p>
                 </Card.Body>
               </Card>
             </Tilt>
@@ -411,13 +438,13 @@ export const Dashboard = memo(function Dashboard() {
           >
             <Card className="glass-card h-100">
               <Card.Body>
-                <h5 className="text-white mb-4">
+                <h5 className="text-white mb-4" style={{ fontFamily: "'Montserrat', sans-serif" }}>
                   <ChartBarIcon style={{ width: '24px', height: '24px' }} className="me-2" />
                   Métodos de Pago
                 </h5>
                 <Doughnut data={chartData.paymentMethodData} options={{
                   plugins: { legend: { labels: { color: 'white' } } }
-                }} />
+                }} plugins={[darkChartBackgroundPlugin as any]} />
               </Card.Body>
             </Card>
           </motion.div>
@@ -431,13 +458,13 @@ export const Dashboard = memo(function Dashboard() {
           >
             <Card className="glass-card h-100">
               <Card.Body>
-                <h5 className="text-white mb-4">
+                <h5 className="text-white mb-4" style={{ fontFamily: "'Montserrat', sans-serif" }}>
                   <ArrowTrendingUpIcon style={{ width: '24px', height: '24px' }} className="me-2" />
                   Estado de Pagos
                 </h5>
                 <Doughnut data={chartData.statusData} options={{
                   plugins: { legend: { labels: { color: 'white' } } }
-                }} />
+                }} plugins={[darkChartBackgroundPlugin as any]} />
               </Card.Body>
             </Card>
           </motion.div>
@@ -451,7 +478,7 @@ export const Dashboard = memo(function Dashboard() {
           >
             <Card className="glass-card h-100">
               <Card.Body>
-                <h5 className="text-white mb-4">
+                <h5 className="text-white mb-4" style={{ fontFamily: "'Montserrat', sans-serif" }}>
                   <CurrencyDollarIcon style={{ width: '24px', height: '24px' }} className="me-2" />
                   Últimos Ingresos
                 </h5>
@@ -461,7 +488,7 @@ export const Dashboard = memo(function Dashboard() {
                     x: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
                   },
                   plugins: { legend: { labels: { color: 'white' } } }
-                }} />
+                }} plugins={[darkChartBackgroundPlugin as any]} />
               </Card.Body>
             </Card>
           </motion.div>
@@ -477,7 +504,7 @@ export const Dashboard = memo(function Dashboard() {
         <Card className="glass-card mb-5">
           <Card.Header className="bg-transparent border-bottom border-secondary">
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-              <h4 className="text-white mb-0">
+              <h4 className="text-white mb-0" style={{ fontFamily: "'Montserrat', sans-serif" }}>
                 <CalendarDaysIcon style={{ width: '30px', height: '30px' }} className="me-2" />
                 Event Manager
               </h4>
@@ -490,7 +517,8 @@ export const Dashboard = memo(function Dashboard() {
                   padding: '10px 20px',
                   fontWeight: 'bold',
                   borderRadius: '10px',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  fontFamily: "'Montserrat', sans-serif"
                 }}
               >
                 <PlusIcon style={{ width: '20px', height: '20px' }} className="me-2" />
@@ -535,10 +563,17 @@ export const Dashboard = memo(function Dashboard() {
                           )}
                           <Card.Body className="p-4">
                             <div className="d-flex justify-content-between align-items-start mb-2">
-                              <h5 className="mb-1">{event.name}</h5>
-                              <Badge bg={event.status === 'active' ? 'success' : 'secondary'}>
-                                {event.status === 'active' ? 'Activo' : 'Inactivo'}
-                              </Badge>
+                              <h5 className="mb-1" style={{ fontFamily: "'Montserrat', sans-serif" }}>{event.name}</h5>
+                              <div className="d-flex align-items-center gap-2">
+                                {event.sheetId ? (
+                                  <Badge bg="success">Base creada</Badge>
+                                ) : (
+                                  <Badge bg="secondary">Creando base…</Badge>
+                                )}
+                                <Badge bg={event.status === 'active' ? 'success' : 'secondary'}>
+                                  {event.status === 'active' ? 'Activo' : 'Inactivo'}
+                                </Badge>
+                              </div>
                             </div>
                             
                             <div className="mb-3">
@@ -556,15 +591,15 @@ export const Dashboard = memo(function Dashboard() {
 
                             <div className="row g-2 mb-3">
                               <div className="col-6">
-                                <div className="text-center p-2 bg-dark rounded">
-                                  <small className="text-muted d-block">General</small>
-                                  <strong className="text-info">${event.ticketPrice.toLocaleString('es-AR')}</strong>
+                                <div className="text-center p-2 bg-dark rounded" style={{ border: '1px solid #8338ec' }}>
+                                  <small className="text-muted d-block" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.8)' }}>Entrada General</small>
+                                  <strong className="text-warning" style={{ color: 'rgba(255,190,11,0.9)' }}>${event.ticketPrice.toLocaleString('es-AR')}</strong>
                                 </div>
                               </div>
                               <div className="col-6">
-                                <div className="text-center p-2 bg-dark rounded">
-                                  <small className="text-muted d-block">VIP</small>
-                                  <strong className="text-warning">${event.vipPrice.toLocaleString('es-AR')}</strong>
+                                <div className="text-center p-2 bg-dark rounded" style={{ border: '1px solid #ffbe0b' }}>
+                                  <small className="text-muted d-block" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.8)' }}>VIP</small>
+                                  <strong className="text-warning" style={{ color: 'rgba(255,190,11,0.9)' }}>${event.vipPrice.toLocaleString('es-AR')}</strong>
                                 </div>
                               </div>
                             </div>
@@ -614,8 +649,7 @@ export const Dashboard = memo(function Dashboard() {
           <Card.Header className="bg-transparent border-bottom border-secondary">
             <div className="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
               <div>
-                <h4 className="text-white mb-2 mb-lg-0">
-                  <UserGroupIcon style={{ width: '30px', height: '30px' }} className="me-2" />
+                <h4 className="text-white mb-2 mb-lg-0" style={{ fontFamily: "'Montserrat', sans-serif" }}>
                   Lista de Compras
                 </h4>
                 {selectedEventFilter !== 'all' && (
@@ -625,16 +659,17 @@ export const Dashboard = memo(function Dashboard() {
                 )}
               </div>
               <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2 gap-sm-3 w-100 w-lg-auto">
+                {/* Select sin emojis */}
                 <Form.Select
                   value={selectedEventFilter}
                   onChange={(e) => setSelectedEventFilter(e.target.value)}
                   className="bg-dark text-white border-secondary"
-                  style={{ minWidth: '200px', fontSize: '0.9rem' }}
+                  style={{ minWidth: '200px', fontSize: '0.9rem', fontFamily: "'Montserrat', sans-serif" }}
                 >
-                  <option value="all">📊 Todas las compras</option>
+                  <option value="all">Todas las compras</option>
                   {events.map(event => (
                     <option key={event.id} value={event.id}>
-                      🎉 {event.name}
+                      {event.name}
                     </option>
                   ))}
                 </Form.Select>
@@ -647,37 +682,33 @@ export const Dashboard = memo(function Dashboard() {
                   onClick={() => { loadPurchases(); loadEvents(); }}
                   className="btn-neon"
                   disabled={loading || eventsLoading}
-                  style={{
-                    borderColor: '#00ffff',
-                    color: '#00ffff'
-                  }}
+                  style={{ borderColor: '#00ffff', color: '#00ffff' }}
                 >
-                  {(loading || eventsLoading) ? (
-                    <Spinner size="sm" className="me-1" />
-                  ) : (
-                    '🔄'
-                  )} Actualizar
+                  { (loading || eventsLoading) ? (<Spinner size="sm" className="me-1" />) : null } Actualizar
                 </Button>
               </div>
             </div>
           </Card.Header>
           <Card.Body>
-            {/* Info del evento seleccionado */}
+            <style>{`
+              .purchase-table thead th { background: rgba(15,15,20,0.95); color: #fff; }
+              .purchase-table tbody tr:nth-child(odd) { background: rgba(255,255,255,0.02); }
+              .purchase-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.04); }
+              .purchase-table tbody tr:hover { background: rgba(255,0,110,0.10) !important; }
+            `}</style>
             {selectedEventFilter !== 'all' && (
               <div className="mb-4">
                 {(() => {
                   const selectedEvent = events.find(e => e.id === selectedEventFilter);
                   return selectedEvent ? (
-                    <Alert variant="info" className="glass-card">
+                    <Alert variant="dark" className="glass-card">
                       <div className="d-flex align-items-center justify-content-between">
                         <div>
-                          <h6 className="mb-1">
-                            🎉 <strong>{selectedEvent.name}</strong>
+                          <h6 className="mb-1" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+                            <strong>{selectedEvent.name}</strong>
                           </h6>
                           <small>
-                            📅 {selectedEvent.date} - {selectedEvent.hour} | 
-                            📍 {selectedEvent.location} | 
-                            👥 {selectedEvent.capacity} personas
+                            {selectedEvent.date} - {selectedEvent.hour} | {selectedEvent.location} | {selectedEvent.capacity} personas
                           </small>
                         </div>
                         <div className="text-end">
@@ -690,11 +721,10 @@ export const Dashboard = memo(function Dashboard() {
                 })()}
               </div>
             )}
-
             <div className="table-responsive">
-              <Table hover variant="dark" className="align-middle" style={{ minWidth: '800px' }}>
+              <Table hover variant="dark" className="align-middle purchase-table" style={{ minWidth: '800px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid rgba(0,255,255,0.3)' }}>
+                  <tr>
                     <th>#</th>
                     <th>Cliente</th>
                     <th>Contacto</th>
@@ -712,95 +742,54 @@ export const Dashboard = memo(function Dashboard() {
                     <tr>
                       <td colSpan={10} className="text-center py-4">
                         <div className="text-muted">
-                          <UserGroupIcon style={{ width: '40px', height: '40px' }} className="mb-2" />
                           <p className="mb-0">
-                            {selectedEventFilter === 'all' 
-                              ? 'No hay compras registradas' 
-                              : 'No hay compras para este evento'}
+                            {selectedEventFilter === 'all' ? 'No hay compras registradas' : 'No hay compras para este evento'}
                           </p>
                         </div>
                       </td>
                     </tr>
                   ) : (
                     filteredPurchases.map((purchase, index) => (
-                    <motion.tr
-                      key={purchase.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <td>{index + 1}</td>
-                      <td>
-                        <strong>{purchase.firstName} {purchase.lastName}</strong>
-                      </td>
-                      <td>
-                        <small className="d-block">{purchase.phone}</small>
-                        <small className="text-info">{purchase.email}</small>
-                      </td>
-                      <td>
-                        {purchase.eventName ? (
-                          <Badge bg="warning" className="px-2 py-1">
-                            🎉 {purchase.eventName}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted">Sin evento</span>
-                        )}
-                      </td>
-                      <td>
-                        <Badge bg="primary" className="px-3 py-2">{purchase.ticketQty}</Badge>
-                      </td>
-                      <td>
-                        {purchase.coolerQty > 0 ? (
-                          <Badge bg="warning" className="px-3 py-2">{purchase.coolerQty}</Badge>
-                        ) : (
-                          <span className="text-muted">-</span>
-                        )}
-                      </td>
-                      <td className="fw-bold text-success">
-                        ${purchase.total.toLocaleString('es-AR')}
-                      </td>
-                      <td>
-                        <Badge bg="info">{purchase.paymentMethod}</Badge>
-                      </td>
-                      <td>
-                        {purchase.status === 'Confirmado' ? (
-                          <Badge bg="success">
-                            <CheckCircleIcon style={{ width: '16px', height: '16px' }} className="me-1" />
-                            Confirmado
-                          </Badge>
-                        ) : (
-                          <Badge bg="danger">
-                            <XCircleIcon style={{ width: '16px', height: '16px' }} className="me-1" />
-                            Pendiente
-                          </Badge>
-                        )}
-                      </td>
-                      <td>
-                        <Button
-                          variant="outline-success"
-                          size="sm"
-                          onClick={() => confirmAndSend(purchase, index + 1)}
-                          disabled={sendingQR === index + 1}
-                          className="btn-neon"
-                          style={{
-                            borderColor: '#00ff00',
-                            color: '#00ff00'
-                          }}
-                        >
-                          {sendingQR === index + 1 ? (
-                            <>
-                              <Spinner size="sm" className="me-1" />
-                              Enviando...
-                            </>
+                      <motion.tr key={purchase.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}>
+                        <td>{index + 1}</td>
+                        <td>
+                          <strong>{purchase.firstName} {purchase.lastName}</strong>
+                        </td>
+                        <td>
+                          <small className="d-block">{purchase.phone}</small>
+                          <small className="text-info">{purchase.email}</small>
+                        </td>
+                        <td>
+                          {purchase.eventName ? (
+                            <Badge bg="warning" className="px-2 py-1" style={{ fontFamily: "'Montserrat', sans-serif" }}>{purchase.eventName}</Badge>
                           ) : (
-                            <>
-                              <QrCodeIcon style={{ width: '16px', height: '16px' }} className="me-1" />
-                              Enviar QRs
-                            </>
+                            <span className="text-muted">Sin evento</span>
                           )}
-                        </Button>
-                      </td>
-                    </motion.tr>
+                        </td>
+                        <td><Badge bg="primary" className="px-3 py-2">{purchase.ticketQty}</Badge></td>
+                        <td>{purchase.coolerQty > 0 ? (<Badge bg="warning" className="px-3 py-2">{purchase.coolerQty}</Badge>) : (<span className="text-muted">-</span>)}</td>
+                        <td className="fw-bold text-success">${purchase.total.toLocaleString('es-AR')}</td>
+                        <td><Badge bg="info">{purchase.paymentMethod}</Badge></td>
+                        <td>
+                          {purchase.status === 'Confirmado' ? (
+                            <Badge bg="success">Confirmado</Badge>
+                          ) : (
+                            <Badge bg="danger">Pendiente</Badge>
+                          )}
+                        </td>
+                        <td>
+                          <Button
+                            variant="outline-success"
+                            size="sm"
+                            onClick={() => confirmAndSend(purchase, index + 1)}
+                            disabled={sendingQR === index + 1}
+                            className="btn-neon"
+                            style={{ borderColor: '#00ff00', color: '#00ff00' }}
+                          >
+                            {sendingQR === index + 1 ? (<><Spinner size="sm" className="me-1" /> Enviando...</>) : ('Enviar QRs')}
+                          </Button>
+                        </td>
+                      </motion.tr>
                     ))
                   )}
                 </tbody>

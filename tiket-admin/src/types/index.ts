@@ -17,7 +17,7 @@ export interface Purchase {
 
 export interface User {
   username: string
-  role: 'admin' | 'super-admin'
+  role: 'admin'
 }
 
 export interface QRCode {
@@ -42,4 +42,5 @@ export interface Event {
   createdBy: string
   createdAt: string
   status: 'active' | 'inactive'
+  sheetId?: string // Spreadsheet propio del admin
 }

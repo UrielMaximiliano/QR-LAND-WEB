@@ -61,44 +61,53 @@ export function LoginForm() {
                 className="text-center mb-4"
                 animate={{ 
                   rotate: [0, 360],
-                  scale: [1, 1.1, 1]
+                  scale: [1, 1.05, 1]
                 }}
                 transition={{ 
                   rotate: { duration: 20, repeat: Infinity, ease: 'linear' },
-                  scale: { duration: 2, repeat: Infinity }
+                  scale: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
                 }}
               >
                 <div style={{
                   width: '100px',
                   height: '100px',
                   margin: '0 auto',
-                  background: 'linear-gradient(45deg, #00ffff, #ff00ff)',
+                  background: 'linear-gradient(45deg, #ff006e, #8338ec)',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 0 50px rgba(0,255,255,0.5)'
+                  boxShadow: '0 0 40px rgba(255,0,110,0.45)'
                 }}>
                   <SparklesIcon style={{ width: '50px', height: '50px', color: 'white' }} />
                 </div>
               </motion.div>
 
-              <h2 className="text-center mb-4 text-white" style={{
-                fontFamily: "'Orbitron', sans-serif",
-                fontWeight: 900,
-                fontSize: '2rem',
-                textShadow: '0 0 20px rgba(0,255,255,0.5)'
+              <h2 className="text-center mb-1 text-white" style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontWeight: 700,
+                letterSpacing: '5px',
+                fontSize: '2.4rem',
+                textTransform: 'uppercase',
+                textShadow: '0 0 10px rgba(131,56,236,0.8), 0 0 20px rgba(131,56,236,0.6), 0 0 30px rgba(131,56,236,0.4), 0 0 40px rgba(131,56,236,0.2)'
               }}>
-                ADMIN ACCESS
+                TICKETEANDO
               </h2>
+              <div className="text-center mb-4" style={{
+                fontFamily: "'Montserrat', sans-serif",
+                color: 'rgba(255,255,255,0.85)',
+                letterSpacing: '2px'
+              }}>
+                ADMIN
+              </div>
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-4">
                   <InputGroup>
                     <InputGroup.Text style={{
-                      background: 'rgba(0,255,255,0.1)',
-                      border: '1px solid rgba(0,255,255,0.3)',
-                      color: '#00ffff'
+                      background: 'rgba(131,56,236,0.15)',
+                      border: '1px solid rgba(131,56,236,0.35)',
+                      color: '#ffffff'
                     }}>
                       <UserIcon style={{ width: '20px', height: '20px' }} />
                     </InputGroup.Text>
@@ -110,9 +119,9 @@ export function LoginForm() {
                       required
                       style={{
                         background: 'rgba(0,0,0,0.5)',
-                        border: '1px solid rgba(0,255,255,0.3)',
+                        border: '1px solid rgba(131,56,236,0.35)',
                         color: 'white',
-                        fontSize: '1.1rem'
+                        fontSize: '1.05rem'
                       }}
                       className="custom-input"
                     />
@@ -122,9 +131,9 @@ export function LoginForm() {
                 <Form.Group className="mb-4">
                   <InputGroup>
                     <InputGroup.Text style={{
-                      background: 'rgba(255,0,255,0.1)',
-                      border: '1px solid rgba(255,0,255,0.3)',
-                      color: '#ff00ff'
+                      background: 'rgba(255,0,110,0.15)',
+                      border: '1px solid rgba(255,0,110,0.35)',
+                      color: '#ffffff'
                     }}>
                       <LockClosedIcon style={{ width: '20px', height: '20px' }} />
                     </InputGroup.Text>
@@ -136,9 +145,9 @@ export function LoginForm() {
                       required
                       style={{
                         background: 'rgba(0,0,0,0.5)',
-                        border: '1px solid rgba(255,0,255,0.3)',
+                        border: '1px solid rgba(255,0,110,0.35)',
                         color: 'white',
-                        fontSize: '1.1rem'
+                        fontSize: '1.05rem'
                       }}
                       className="custom-input"
                     />
@@ -172,15 +181,15 @@ export function LoginForm() {
                     style={{
                       background: loading 
                         ? 'linear-gradient(45deg, #666, #999)'
-                        : 'linear-gradient(45deg, #00ffff, #ff00ff)',
+                        : 'linear-gradient(45deg, #ff006e, #8338ec)',
                       border: 'none',
                       fontWeight: 'bold',
-                      fontSize: '1.2rem',
+                      fontSize: '1.1rem',
                       padding: '12px',
                       borderRadius: '10px',
                       textTransform: 'uppercase',
                       letterSpacing: '2px',
-                      boxShadow: '0 4px 15px rgba(0,255,255,0.4)',
+                      boxShadow: '0 4px 15px rgba(255,0,110,0.35)',
                       transition: 'all 0.3s ease'
                     }}
                   >
@@ -191,7 +200,7 @@ export function LoginForm() {
                       </>
                     ) : (
                       <>
-                        <LockClosedIcon style={{ width: '24px', height: '24px' }} className="me-2" />
+                        <LockClosedIcon style={{ width: '22px', height: '22px' }} className="me-2" />
                         Ingresar
                       </>
                     )}
@@ -199,7 +208,7 @@ export function LoginForm() {
                 </motion.div>
 
                 <div className="text-center mt-4">
-                  <small className="text-muted" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  <small className="text-muted" style={{ fontFamily: "'Montserrat', sans-serif", color: 'rgba(255,255,255,0.6)' }}>
                     Credenciales: admin/admin123 o super/super123
                   </small>
                 </div>
@@ -217,12 +226,13 @@ export function LoginForm() {
           }
           
           .custom-input::placeholder {
-            color: rgba(255,255,255,0.4);
+            color: rgba(255,255,255,0.5);
           }
-          
           .custom-input:focus {
             background: rgba(0,0,0,0.8) !important;
             color: white !important;
+            box-shadow: 0 0 0 0.2rem rgba(131,56,236,0.35) !important;
+            border-color: #8338ec !important;
           }
         `}</style>
       </motion.div>

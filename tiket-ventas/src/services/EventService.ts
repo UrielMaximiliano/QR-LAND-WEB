@@ -12,6 +12,7 @@ export interface EventData {
   createdBy: string
   createdAt: string
   status: 'active' | 'inactive'
+  sheetId?: string
 }
 
 export class GoogleSheetsEventService {
@@ -55,7 +56,8 @@ export class GoogleSheetsEventService {
         capacity: parseInt(row[9]) || 0,
         createdBy: row[10] || '',
         createdAt: row[11] || '',
-        status: (row[12] as 'active' | 'inactive') || 'active'
+        status: (row[12] as 'active' | 'inactive') || 'active',
+        sheetId: row[13] || ''
       })).filter(event => event.status === 'active'); // Solo mostrar eventos activos
 
       // Actualizar cache

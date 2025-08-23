@@ -109,7 +109,7 @@ export default function App() {
       <header className="admin-header py-3 mb-4" style={{
         background: 'rgba(0,0,0,0.5)',
         backdropFilter: 'blur(20px)',
-        borderBottom: '2px solid rgba(255,0,255,0.3)',
+        borderBottom: '2px solid rgba(131,56,236,0.5)',
         position: 'sticky',
         top: 0,
         zIndex: 1000
@@ -121,19 +121,20 @@ export default function App() {
               style={{
                 fontFamily: "'Bebas Neue', sans-serif",
                 fontSize: '2.5rem',
-                letterSpacing: '3px',
-                textShadow: '0 0 30px rgba(0,255,255,0.5), 0 0 60px rgba(255,0,255,0.3)'
+                letterSpacing: '5px',
+                textTransform: 'uppercase',
+                textShadow: '0 0 10px rgba(131,56,236,0.8), 0 0 20px rgba(131,56,236,0.6), 0 0 30px rgba(131,56,236,0.4), 0 0 40px rgba(131,56,236,0.2)'
               }}
               animate={{ 
                 textShadow: [
-                  '0 0 30px rgba(0,255,255,0.5), 0 0 60px rgba(255,0,255,0.3)',
-                  '0 0 40px rgba(255,0,255,0.5), 0 0 80px rgba(0,255,255,0.3)',
-                  '0 0 30px rgba(0,255,255,0.5), 0 0 60px rgba(255,0,255,0.3)'
+                  '0 0 10px rgba(131,56,236,0.8), 0 0 20px rgba(131,56,236,0.6), 0 0 30px rgba(131,56,236,0.4), 0 0 40px rgba(131,56,236,0.2)',
+                  '0 0 14px rgba(131,56,236,0.9), 0 0 28px rgba(131,56,236,0.7), 0 0 42px rgba(131,56,236,0.5), 0 0 56px rgba(131,56,236,0.3)',
+                  '0 0 10px rgba(131,56,236,0.8), 0 0 20px rgba(131,56,236,0.6), 0 0 30px rgba(131,56,236,0.4), 0 0 40px rgba(131,56,236,0.2)'
                 ]
               }}
               transition={{ duration: 3, repeat: Infinity }}
             >
-              🎉 TIKET NOW - ADMIN PANEL
+              TICKETEANDO - ADMIN
             </motion.h1>
             
             {isAuthenticated && (
@@ -143,19 +144,19 @@ export default function App() {
                 onClick={logout}
                 className="btn btn-outline-danger"
                 style={{
-                  borderColor: '#ff0080',
-                  color: '#ff0080',
+                  borderColor: '#ff006e',
+                  color: '#ff006e',
                   fontWeight: 'bold',
                   borderWidth: '2px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#ff0080'
+                  e.currentTarget.style.background = '#ff006e'
                   e.currentTarget.style.color = 'white'
-                  e.currentTarget.style.boxShadow = '0 0 20px rgba(255,0,128,0.5)'
+                  e.currentTarget.style.boxShadow = '0 0 20px rgba(255,0,110,0.5)'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = '#ff0080'
+                  e.currentTarget.style.color = '#ff006e'
                   e.currentTarget.style.boxShadow = 'none'
                 }}
               >
@@ -197,143 +198,70 @@ export default function App() {
 
       {/* Estilos personalizados */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700&display=swap');
         
         body {
-          font-family: 'Rajdhani', sans-serif;
+          font-family: 'Montserrat', sans-serif;
           overflow-x: hidden;
         }
         
-        /* Scrollbar personalizada */
+        /* Scrollbar personalizada sincronizada */
         ::-webkit-scrollbar {
           width: 12px;
         }
-        
         ::-webkit-scrollbar-track {
-          background: rgba(0,0,0,0.8);
+          background: rgba(0,0,0,0.85);
           border-radius: 10px;
         }
-        
         ::-webkit-scrollbar-thumb {
-          background: linear-gradient(45deg, #00ffff, #ff00ff);
+          background: linear-gradient(45deg, #ff006e, #8338ec);
           border-radius: 10px;
-          border: 2px solid rgba(0,0,0,0.8);
+          border: 2px solid rgba(0,0,0,0.85);
         }
-        
         ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(45deg, #ff00ff, #00ffff);
+          background: linear-gradient(45deg, #8338ec, #ff006e);
         }
         
-        /* Efectos de neón para botones */
-        .btn-neon {
-          position: relative;
-          overflow: hidden;
-          transition: all 0.3s ease;
-        }
-        
-        .btn-neon::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-          transition: left 0.5s ease;
-        }
-        
-        .btn-neon:hover::before {
-          left: 100%;
-        }
-        
-        /* Animación de pulso para elementos importantes */
-        @keyframes pulse-neon {
-          0% {
-            box-shadow: 0 0 20px rgba(0,255,255,0.5);
-          }
-          50% {
-            box-shadow: 0 0 40px rgba(255,0,255,0.7), 0 0 60px rgba(0,255,255,0.5);
-          }
-          100% {
-            box-shadow: 0 0 20px rgba(0,255,255,0.5);
-          }
-        }
-        
-        .pulse-neon {
-          animation: pulse-neon 2s infinite;
-        }
-        
-        /* Glassmorphism para cards */
+        /* Cards y contenedores oscuros */
         .glass-card {
-          background: rgba(255,255,255,0.05);
+          background: rgba(15,15,20,0.9);
           backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.08);
           border-radius: 15px;
+          color: #fff;
+        }
+        .admin-app .card {
+          background-color: rgba(15,15,20,0.9);
+          color: #fff;
+          border: 1px solid rgba(255,255,255,0.08);
+        }
+        .admin-app .card-header,
+        .admin-app .card-footer {
+          background-color: rgba(15,15,20,0.9) !important;
+          border-color: rgba(255,255,255,0.08) !important;
+          color: #fff;
+        }
+        .admin-app .modal-content {
+          background-color: rgba(15,15,20,0.95);
+          color: #fff;
+          border: 1px solid rgba(255,255,255,0.08);
         }
         
-        /* Responsive Styles para Admin */
-        @media (max-width: 768px) {
-          .admin-header h1 {
-            font-size: 1.8rem !important;
-            letter-spacing: 2px !important;
-          }
-          
-          .card-body {
-            padding: 1rem !important;
-          }
-          
-          .table-responsive {
-            font-size: 0.85rem;
-          }
-          
-          .btn-neon {
-            font-size: 0.85rem !important;
-            padding: 0.5rem 1rem !important;
-          }
-          
-          .display-5 {
-            font-size: 1.5rem !important;
-          }
-        }
-        
-        @media (max-width: 576px) {
-          .admin-header {
-            padding: 1rem 0 !important;
-          }
-          
-          .admin-header h1 {
-            font-size: 1.5rem !important;
-            letter-spacing: 1px !important;
-          }
-          
-          .dashboard {
-            padding: 0 0.5rem;
-          }
-          
-          .modal-body {
-            padding: 1rem !important;
-          }
-          
-          .btn {
-            font-size: 0.85rem !important;
-          }
-        }
-        
-        /* Efecto hover para tablas */
+        /* Efecto hover para tablas - paleta sincronizada */
         .table-hover tbody tr:hover {
-          background: rgba(0,255,255,0.1) !important;
+          background: rgba(255,0,110,0.08) !important;
           transform: scale(1.01);
           transition: all 0.3s ease;
-          box-shadow: 0 5px 15px rgba(0,255,255,0.3);
+          box-shadow: 0 5px 15px rgba(255,0,110,0.25);
         }
         
-        /* Inputs con estilo cyberpunk */
+        /* Inputs focus sincronizados */
         .form-control:focus,
         .form-select:focus {
           background: rgba(0,0,0,0.8) !important;
-          border-color: #00ffff !important;
-          color: #00ffff !important;
-          box-shadow: 0 0 0 0.25rem rgba(0,255,255,0.25) !important;
+          border-color: #8338ec !important;
+          color: #ffffff !important;
+          box-shadow: 0 0 0 0.25rem rgba(131,56,236,0.35) !important;
         }
       `}</style>
     </div>
